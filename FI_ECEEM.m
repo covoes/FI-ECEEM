@@ -1,16 +1,19 @@
-function [bestPartition EMSteps tFinal g] = FastEM( data, maxClusters, sizePopulation, ...
-	   	maxGenerations, maxGenWOImprov, maxEMIter, fitnessFName, maxKMSIter )
-%FastEM algorithm, evolutionary FEAC without merge operation 
+function [bestPartition EMSteps tFinal g] = FI_ECEEM( data, constraints, maxClusters, sizePopulation, ...
+	   	maxGenerations, maxGenWOImprov, maxEMIter, fitnessFName, maxKMSIter, minSizePop	)
+%Feasible-Infeasible - Evolutionary Create & Eliminate EM algorithm 
 %
 %
 %
 %Parameters:
 %data              : dataset to be clustered NxM where N is the number of objects and M the number of features
+%constraints	   : pairwise constraints that should be respected Cx3 matrix with indexes objects (starting from 1) in 1st and 2nd position 
+%					 and -1 for CL and 1 for ML in the 3rd position
 %maxClusters       : maximum number of clusters to estimate
 %sizePopulation    : number of individuals in the population
 %maxEMIter         : maximum number of EM iterations for refinements in one EM execution
 %fitnessFName      : name of fitness fuction to use. Possible are: 'mdl' (see fitnessFunc.m for details)
 %maxKMSIter        : if the variance based splitting is used, define the number of kmeans iteration used for parameter estimation, also used in the initialization
+%minSizePop		   : minimum size of feasible and infeasible populations. 
 
 
 global EMSteps;
@@ -34,11 +37,13 @@ EMSteps = 0;
 genWOImprov = 0;
 lastBestFitness = 0;
 
-P = initialize(data, maxClusters, sizePopulation,maxKMSIter);
+[Pfeas Pinfeas] = initialize(data, constraints, maxClusters, sizePopulation, maxKMSIter);
 for g=1:maxGenerations
-	P = refinement(P, data, maxEMIter, fitnessFName,maxKMSIter);
 
-	[curBestFitness idx] = min([ P(:).fitness ]);
+	feasiblePool = []
+	infeasiblePool = []
+	Pfeas = refinement(Pfeas, data, maxEMIter, fitnessFName,maxKMSIter);
+	[curBestFitness idx] = min([ Pfeas(:).fitness ]);
 
 	bestPartition = P(idx);
 
@@ -56,14 +61,24 @@ for g=1:maxGenerations
 		genWOImprov = 0;
 		lastBestFitness = curBestFitness;
 	end
-	Pmut = mutation(P, maxClusters, data);
+
+	Pmut = mutation(Pfeas, maxClusters, data);
 	Pmut = refinement(Pmut, data, maxEMIter, fitnessFName, maxKMSIter);
-	P = selection_with_mutated_mulambda(P,Pmut,sizePopulation);
+	PmutInf = treatment(Pinfeas, data, maxEMIter);
+	[feasiblePool infeasiblePool] = fitness_based_selection(Pfeas, Pmut, constraints, feasiblePool, infeasiblePool, data);
+	[feasiblePool infeasiblePool] = constraint_based_selection(Pinfeas, PmutInf, constraints, feasiblePool, infeasiblePool, data);
+	[feasiblePool infeasiblePool] = sort_and_fill_pools_if_needed(feasiblePool, infeasiblePool, minSizePop);
+
+	Pfeas = feasiblePool[1:sizePopulation];
+	Pinfeas = infeasiblePool[1:sizePopulation];
+
 	%fprintf('\n-%.2f (%.2f)\n',mean([ P(:).numClusters ]), std([P(:).numClusters]))
 	if EXTRA_INFO
-		INFO_FIT(g,:) = [ P(:).fitness ];
-		INFO_K(g,:) = [ P(:).numClusters ];
-		save(EXTRA_INFO, 'INFO_FIT', 'INFO_K');
+		INFO_FIT(g,:) = [ Pfeas(:).fitness ];
+		INFO_K(g,:) = [ Pfeas(:).numClusters ];
+		INFO_FIT2(g,:) = [ Pinfeas(:).fitness ];
+		INFO_K2(g,:) = [ Pinfeas(:).numClusters ];
+		save(EXTRA_INFO, 'INFO_FIT', 'INFO_K', 'INFO_FIT2', 'INFO_K2');
 	end	
 
 end

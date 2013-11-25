@@ -14,11 +14,11 @@ for i=1:length(P)
 
 
 	numClusters = P(i).numClusters;
-		
+
 	covs = zeros( numFeatures, numFeatures, numClusters );
     means = P(i).mean(1:numClusters,:);
 
-	%create gmdistribution 
+	%create gmdistribution
     for k=1:numClusters
 		%adding regularization value to avoid ill conditioning
         covs(:,:,k) = squareformSymmetric( P( i ).covariance(k,:) ) + eye(numFeatures)*regV;
@@ -37,27 +37,27 @@ for i=1:length(P)
 		objEM = gmdistribution.fit(data, numClusters, ...
 		    'Start', struct( 'mu', means, 'Sigma', covs, 'PComponents', mixingCoefficients ), ...
 			'Options', statOpts, 'Regularize', regV);
-	catch err		
+	catch err
 		fprintf('--%s\n',err.identifier)
 		P(i) = initialize(data, length(P(i).mixCoef), 1, maxKMSIter);
 		numClusters = P(i).numClusters;
 		covs = zeros( numFeatures, numFeatures, numClusters );
 	    means = P(i).mean(1:numClusters,:);
 
-		%create gmdistribution 
+		%create gmdistribution
 	    for k=1:numClusters
 			%adding regularization value to avoid ill conditioning
 		    covs(:,:,k) = squareformSymmetric( P( i ).covariance(k,:) ) + eye(numFeatures)*regV;
 	    end
 		mixingCoefficients = P(i).mixCoef(1:numClusters);
-		
+
 		objEM = gmdistribution.fit(data, numClusters, ...
 		    'Start', struct( 'mu', means, 'Sigma', covs , 'PComponents', mixingCoefficients ), ...
 			'Options', statOpts, 'Regularize', regV);
 	end
 
 	EMSteps = EMSteps + objEM.Iters;
-	
+
 	%update individual parameters
 	P(i).mean(1:numClusters,:) = objEM.mu;
 	P(i).mixCoef(1:numClusters) = objEM.PComponents;
@@ -68,7 +68,7 @@ for i=1:length(P)
 		P(i).determinant(k) = det( covs(:,:,k) );
 		%storing the squared mahalanobis distance
 		dif = bsxfun(@minus, data, P(i).mean(k,:));
-		P(i).distance(:,k) = sum((dif / covs(:,:,k)) .* dif,2);		
+		P(i).distance(:,k) = sum((dif / covs(:,:,k)) .* dif,2);
 	end
 
 	if DEBUG
