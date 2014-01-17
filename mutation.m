@@ -18,17 +18,17 @@ for i=1:length(P)
 		fprintf(DEBUG,'\n\n\n-----%s\n\n#MUTATION\nOLD INDIVIDUAL (%d):%s\n',mutOpToApply,i,info_individual(P(i)));
 	end
 
-	
-	[posterior gauss] = computePosterior( P(i), data );	
+
+	[posterior gauss] = computePosterior( P(i), data );
 	oldIndiv = P(i);
 	if strcmp(mutOpToApply,'elim')
-		%remove clusters 
+		%remove clusters
 		lnTerms = bsxfun(@plus, log(eps+P(i).mixCoef(1:numClusters)), log(eps+gauss));
 		%transform in positive so that higher values will have more probability to mutate
 		valuesMutationClusters = -1*sum(posterior .* lnTerms, 1);
 		[valuesSorted idxSorted] = sort( valuesMutationClusters );
 		valuesMutationClusters( idxSorted ) = 1:numClusters;
-		
+
 		probs = valuesMutationClusters ./ sum(valuesMutationClusters);
 		z = randi([1 numClusters-2]);
 		%chosen are the clusters selected for removal
@@ -44,7 +44,7 @@ for i=1:length(P)
 		%create new clusters
 		logsPost = log2(eps+posterior);
 		objEntropies = -sum(posterior.*logsPost,2);
-		
+
 		[valuesSorted idxSorted] = sort( objEntropies );
 		objEntropies( idxSorted ) = 1:length(objEntropies);
 
