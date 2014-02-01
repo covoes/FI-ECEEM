@@ -1,4 +1,4 @@
-function [bestPartition EMSteps tFinal g] = FI_ECEEM( data, constraints, maxClusters, sizePopulation, ...
+function [bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, maxClusters, sizePopulation, ...
 	   	maxGenerations, maxGenWOImprov, maxEMIter, fitnessFName, maxKMSIter, minSizePop	)
 %Feasible-Infeasible - Evolutionary Create & Eliminate EM algorithm
 %
@@ -6,7 +6,7 @@ function [bestPartition EMSteps tFinal g] = FI_ECEEM( data, constraints, maxClus
 %
 %Parameters:
 %data              : dataset to be clustered NxM where N is the number of objects and M the number of features
-%constraints	   : pairwise constraints that should be respected Cx3 matrix with indexes objects (starting from 1) in 1st and 2nd position
+%constraints	     : pairwise constraints that should be respected Cx3 matrix with index to objects (starting from 1) in 1st and 2nd position
 %					 and -1 for CL and 1 for ML in the 3rd position
 %maxClusters       : maximum number of clusters to estimate
 %sizePopulation    : number of individuals in the population
@@ -37,7 +37,9 @@ EMSteps = 0;
 genWOImprov = 0;
 lastBestFitness = 0;
 
-[Pfeas Pinfeas] = initialize(data, constraints, maxClusters, sizePopulation, maxKMSIter);
+conGraph = generate_constraint_graph(constraints)
+
+[Pfeas Pinfeas] = initialize_with_constraints(data, conGraph, maxClusters, sizePopulation, maxKMSIter);
 for g=1:maxGenerations
 
 	feasiblePool = []
