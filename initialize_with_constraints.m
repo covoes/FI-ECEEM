@@ -11,7 +11,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(data, conGraph, configPrm
 	sizePopFeasible = configPrm.sizePopFeasible;
 	sizePopInfeasible = configPrm.sizePopInfeasible;
 
-	[nChunklets,chunklets] = graphconncomp(conGraph);
+	[nChunklets,chunklets] = generate_chunklets(conGraph);
 
 	opts = statset('MaxIter',configPrm.maxKMSIter);
 
@@ -43,6 +43,25 @@ function [Pfeas Pinfeas] = initialize_with_constraints(data, conGraph, configPrm
 	Pinfeas = Pinfeas(1:min(length(Pinfeas),sizePopInfeasible));
 end
 
+
+function [nChunklets outChunklets] = generate_chunklets(conGraph)
+	MLs = conGraph>0;
+	[nChunklets chunklets] = graphconncomp(MLs, 'Directed', false);
+	validLabel = 1;
+	outChunklets = chunklets;
+	for i=1:nChunklets
+		idx = find(chunklets == i);
+		if numel(idx) == 1
+			nChunklets = nChunklets - 1;
+			outChunklets(idx) = 0;
+		else
+			outChunklets(idx) = validLabel;
+			validLabel = validLabel + 1;
+		end
+	end
+end
+
+
 function [Pfeas Pinfeas] = insert_individual_correct_pool(individual, conGraph, Pfeas, Pinfeas,data)
 	if isFeasible(individual, conGraph, data)
 		idx = length(Pfeas);
@@ -64,7 +83,8 @@ end
 function isF = isFeasible(individual, conGraph, data)
 	[i j s] = find(conGraph);
 	constraints = [ i j s ];
-	isF = compute_penalty(individual, constraints, data);
+	idxVio = compute_penalty(individual, constraints, data);
+	isF = idxVio == false;
 end
 
 function individual = initialize_gmm(data, k, init, opts)
@@ -138,25 +158,42 @@ function nClusters = generate_nclusters(nIndividuals,cfg)
 end
 
 function unittests
+	testGenerateChunklets
+	testInitializeWithConstraints
 	testSpreadChunklets
 	testGenerateNClusters
 	testGmmFromKmeans
 	testSampleInitialSeedsOfChunklets
-	testInitializeWithConstraints
 end
 
+function testGenerateChunklets
+	graph = sparse([1 6 4], [3 7 5], [1 1 -1], 7, 7);
+	graph = graph + graph';
+	[outNchunk chunklets] = generate_chunklets(graph);
+	assertEqual(outNchunk, 2)
+	assertEqual(chunklets, [1 0 1 0 0 2 2])
+end
 function testInitializeWithConstraints
 	data = [ 1 2; 1 3; 2 4; 5 5; 9 10; 10 11; 12 12];
-	conEasy = sparse([1 6 3], [3 7 7], [1 1 -1], 7, 7);
-	conHard = sparse([1 6 3 3 5], [3 7 7 4 6], [1 1 -1 -1 -1], 7, 7);
+	conHard = sparse([1 3 4 5], [3 5 6 6], [1 -1 -1 1], 7, 7);
+	conHard = conHard+conHard';
 	configPrm = struct('minClusters',2,'maxClusters',3, 'maxKMSIter',3, ...
 		                 'sizePopFeasible',2, 'sizePopInfeasible', 2,...
 	                   'maxInitTries', 5);
 
-	[outFeas outInfeas] = initialize_with_constraints(data, conHard, configPrm);
+	[outFeas outInfeas] = initialize_with_constraints(data, conHard, configPrm)
 	assertTrue(all(([outFeas(:).nClusters] >=2) & ([outFeas(:).nClusters] <= 3)),...
 		'Numero de clusters invalido')
-
+	for i=1:length(outFeas)
+		[~,k1] = min(outFeas(i).distance(1,:));
+		[~,k3] = min(outFeas(i).distance(3,:));
+		[~,k4] = min(outFeas(i).distance(4,:));
+		[~,k6] = min(outFeas(i).distance(6,:));
+		assertEqual(outFeas(i).classOfCluster(k1), outFeas(i).classOfCluster(k3),...
+			'Restrição ML violada em solucão factível')
+		assertTrue(outFeas(i).classOfCluster(k4) ~= outFeas(i).classOfCluster(k6),...
+			'Restrição CL violada em solucão factível')
+	end
 
 end
 
