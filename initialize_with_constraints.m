@@ -68,14 +68,14 @@ function [Pfeas Pinfeas] = insert_individual_correct_pool(individual, conGraph, 
 		if idx == 0
 			Pfeas = individual;
 		else
-			Pfeas(idx) = individual;
+			Pfeas(idx+1) = individual;
 		end
 	else
 		idx =  length(Pinfeas);
 		if idx == 0
 			Pinfeas = individual;
 		else
-			Pinfeas(idx) = individual;
+			Pinfeas(idx+1) = individual;
 		end
 	end
 end
@@ -167,34 +167,55 @@ function unittests
 end
 
 function testGenerateChunklets
-	graph = sparse([1 6 4], [3 7 5], [1 1 -1], 7, 7);
-	graph = graph + graph';
+	graph = generate_constraint_graph([1 3 1; 6 7 1; 4 5 -1], 7);
 	[outNchunk chunklets] = generate_chunklets(graph);
 	assertEqual(outNchunk, 2)
 	assertEqual(chunklets, [1 0 1 0 0 2 2])
 end
+
 function testInitializeWithConstraints
 	data = [ 1 2; 1 3; 2 4; 5 5; 9 10; 10 11; 12 12];
-	conHard = sparse([1 3 4 5], [3 5 6 6], [1 -1 -1 1], 7, 7);
-	conHard = conHard+conHard';
-	configPrm = struct('minClusters',2,'maxClusters',3, 'maxKMSIter',3, ...
-		                 'sizePopFeasible',2, 'sizePopInfeasible', 2,...
-	                   'maxInitTries', 5);
+	con = [1 3 1;3 5 -1; 4 6 -1; 5 6 1];
+	conHard = generate_constraint_graph(con, size(data,1));
+	configPrm = struct('minClusters',2,'maxClusters',4, 'maxKMSIter',3, ...
+		                 'sizePopFeasible',4, 'sizePopInfeasible', 4,...
+	                   'maxInitTries', 10);
 
-	[outFeas outInfeas] = initialize_with_constraints(data, conHard, configPrm)
-	assertTrue(all(([outFeas(:).nClusters] >=2) & ([outFeas(:).nClusters] <= 3)),...
-		'Numero de clusters invalido')
+	rng(42);
+	[outFeas outInfeas] = initialize_with_constraints(data, conHard, configPrm);
+	assertEqual(length(outFeas), configPrm.sizePopFeasible)
+	assertEqual(length(outInfeas), configPrm.sizePopInfeasible)
+	assertTrue(all([outFeas(:).nClusters] >= configPrm.minClusters),'Numero de clusters invalido')
+  assertTrue(all([outFeas(:).nClusters] <= configPrm.maxClusters),'Numero de clusters invalido')
+	assertTrue(all([outInfeas(:).nClusters] >= configPrm.minClusters),'Numero de clusters invalido')
+  assertTrue(all([outInfeas(:).nClusters] <= configPrm.maxClusters),'Numero de clusters invalido')
 	for i=1:length(outFeas)
-		[~,k1] = min(outFeas(i).distance(1,:));
-		[~,k3] = min(outFeas(i).distance(3,:));
-		[~,k4] = min(outFeas(i).distance(4,:));
-		[~,k6] = min(outFeas(i).distance(6,:));
-		assertEqual(outFeas(i).classOfCluster(k1), outFeas(i).classOfCluster(k3),...
-			'Restrição ML violada em solucão factível')
-		assertTrue(outFeas(i).classOfCluster(k4) ~= outFeas(i).classOfCluster(k6),...
-			'Restrição CL violada em solucão factível')
+		for c=1:size(con,1)
+			[~,k1] = min(outFeas(i).distance(con(c,1),:));
+			[~,k2] = min(outFeas(i).distance(con(c,2),:));
+			if con(c,3) == 1
+			 	assertEqual(outFeas(i).classOfCluster(k1), outFeas(i).classOfCluster(k2),...
+					'Restrição ML violada em solucão factível')
+			else
+				assertTrue(outFeas(i).classOfCluster(k1) ~= outFeas(i).classOfCluster(k2),...
+					'Restrição CL violada em solucão factível')
+			end
+		end
 	end
 
+	for i=1:length(outInfeas)
+		nvio = 0;
+		for c=1:size(con,1)
+			[~,k1] = min(outFeas(i).distance(con(c,1),:));
+			[~,k2] = min(outFeas(i).distance(con(c,2),:));
+			if con(c,3) == 1 && outFeas(i).classOfCluster(k1) ~= outFeas(i).classOfCluster(k2)
+					nvio = nvio + 1;
+			elseif con(c,3) == -1 && outFeas(i).classOfCluster(k1) == outFeas(i).classOfCluster(k2)
+					nvio = nvio + 1;
+			end
+			assertTrue(nvio==0, 'Solução sem violações no pool de não factíveis')
+		end
+	end
 end
 
 function testSpreadChunklets

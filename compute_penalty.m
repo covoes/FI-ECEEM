@@ -1,19 +1,19 @@
 function [idxVio totPenalty] = compute_penalty(P, constraints, data)
-%COMPUTE_PENALTY Given a population, compute a penalty score for each individual and return in 
-%    idxVio a boolean vector of individuals with constraint violations
+	%COMPUTE_PENALTY Given a population, compute a penalty score for each individual and return in 
+	%    idxVio a boolean vector of individuals with constraint violations
 
-  if ischar(P) && strcmp(P,'debug')
+	if ischar(P) && strcmp(P,'debug')
 		unittests()
 		return
 	end
 
-	idxVio = logical(true([1 length(P)]));
+	idxVio = false([1 length(P)]);
 	totPenalty = zeros([1 length(P)]);
 
 	for i=1:length(P)
 		totPenalty(i) = compute_penalty_model(P(i), data, constraints);
 	end
-  idxVio(totPenalty>0) = true;
+	idxVio(totPenalty>0) = true;
 end
 
 
