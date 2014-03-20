@@ -1,26 +1,11 @@
-function [idxVio totPenalty] = compute_penalty(P, constraints, data)
-	%COMPUTE_PENALTY Given a population, compute a penalty score for each individual and return in 
-	%    idxVio a boolean vector of individuals with constraint violations
+function [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(individual, data, constraints, pdfs)
+	%COMPUTE_PENALTY Compute a penalty score for each individual 
 
-	if ischar(P) && strcmp(P,'debug')
+	if ischar(individual) && strcmp(individual,'debug')
 		unittests()
 		return
 	end
 
-	idxVio = false([1 length(P)]);
-	totPenalty = zeros([1 length(P)]);
-
-	for i=1:length(P)
-		totPenalty(i) = compute_penalty_model(P(i), data, constraints);
-	end
-	idxVio(totPenalty>0) = true;
-end
-
-
-function totPenalty = compute_penalty_model(individual, data, constraints, pdfs)
-	if nargin < 4
-		pdfs = computePosterior(individual, data);
-	end
 	totPenalty = 0;
 	for c=1:size(constraints,1)
 		idx1 = constraints(c,1);
@@ -38,8 +23,10 @@ function totPenalty = compute_penalty_model(individual, data, constraints, pdfs)
 			%CL constraind being violated
 			penalty = pdfs(idx1, k1) +  pdfs(idx2, k2);
 		end
+		penaltyByCon(c) = penalty;
 		totPenalty = totPenalty + penalty;
 	end
+	isInfeasible = totPenalty > 0;
 end
 
 
@@ -70,20 +57,22 @@ function testComputePenaltyModel
 
 	function testNoPenalty
 		gaussEasy = [ 1 0 0; 1 0 0; 1 0 0; 0 1 0; 0 0 1; 0 0 1; 0 0 1];
-		out = compute_penalty_model(indiv, data, con, gaussEasy);
-		assertTrue(out==0)
+		[isInf,tot,bycon]  = compute_penalty(indiv, data, con, gaussEasy);
+		assertTrue(tot==0)
+		assert(all(bycon==0))
 	end
 
 	function testMLPenalty
 		gaussEasy = [ 0.8 0.2 0; 1 0 0; 0.3 0.6 0.1; 0 1 0; 0 0 1; 0 0 1; 0 0 1];
-		out = compute_penalty_model(indiv, data, con, gaussEasy);
-		assertElementsAlmostEqual(out,1.5)
+		[isInf,tot,bycon] = compute_penalty(indiv, data, con, gaussEasy);
+		assertElementsAlmostEqual(tot,1.5)
+		assertTrue(bycon(1)==1.5)
 	end
 
 	function testCLPenalty
 		conN = [ 7 3 -1; 1 2 1; 6 7 -1];
 		gaussEasy = [ 0.8 0.2 0; 1 0 0; 0.7 0.3 0; 0 1 0; 0 0 1; 0 0 1; 0.6 0 0.4];
-		out = compute_penalty_model(indiv, data, conN, gaussEasy);
+		[isInf,out] = compute_penalty(indiv, data, conN, gaussEasy);
 		assertElementsAlmostEqual(out,1.3)
 	end
 
@@ -91,14 +80,14 @@ function testComputePenaltyModel
 		conN = [ 4 5 -1 ];
 		gaussEasy = [ 1 0 0; 1 0 0; 1 0 0; 0 1 0; 0 0 1; 0 0 1; 0 0 1];
 		indiv = struct('classOfCluster',[ 1 2 2]);
-		out = compute_penalty_model(indiv, data, conN, gaussEasy);
+		[isInf,out] = compute_penalty(indiv, data, conN, gaussEasy);
 		assertElementsAlmostEqual(out,2)
 	end
 
 	function testMLPenalty_different_clusters_same_class
 		gaussEasy = [ 0.8 0.2 0; 1 0 0; 0 0.9 0.1; 0 0.9 0.1; 0 0 1; 0 0 1; 0 0 1];
 		indiv = struct('classOfCluster',[ 1 1 2]);
-		out = compute_penalty_model(indiv, data, con, gaussEasy);
+		[isInf,out] = compute_penalty(indiv, data, con, gaussEasy);
 		assertElementsAlmostEqual(out,0)
 	end
 
@@ -106,8 +95,9 @@ function testComputePenaltyModel
 		indiv = struct('classOfCluster',[ 1 2 ]);
 		conHard = [1 3 1; 6 7 1; 3 7 -1; 3 4 -1; 5 6 -1];
 		gaussHard = [ 1 0; 1 0; 1 0; 0.55 0.45; 0 1; 0 1; 1 0];
-		out = compute_penalty_model(indiv, data, conHard, gaussHard);
-		assertElementsAlmostEqual(out, 7.55) ;
+		[isInf,tot,bycon] = compute_penalty(indiv, data, conHard, gaussHard);
+		assertElementsAlmostEqual(tot, 7.55) ;
+		assertElementsAlmostEqual(bycon,[0,2,2,1.55,2])
 	end
 end
 
