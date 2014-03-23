@@ -1,4 +1,4 @@
-function [bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM)
+function [bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPrm)
 %Feasible-Infeasible - Evolutionary Create & Eliminate EM algorithm
 %
 %%TODO refazer doc usando configPRM
@@ -37,21 +37,26 @@ tIni = tic;
 %tolerance to consider no improvement in EM
 tolerance = 1e-5;
 
-%configPRM deve ter maxClusters, sizePopulation, maxKMSIter
-%maxClusters, sizePopulation,	maxGenerations, maxGenWOImprov, maxEMIter, fitnessFName, maxKMSIter, minSizePop	)
-%TODO adicionar check
+nonOptPrms = {'maxClusters', 'sizePopulation', 'maxKMSIter', 'maxClusters', ...
+	                'sizePopulation',	'maxGenerations', 'maxGenWOImprov', 'maxEMIter',...
+                  'fitnessFName', 'maxKMSIter', 'minSizePop'};
+for f=nonOptPrms
+	if ~isfield(configPrm,cell2mat(f))
+		error('Field %s is missing from configPrm', cell2mat(f))
+	end
+end
 
 EMSteps = 0;
 genWOImprov = 0;
 lastBestFitness = 0;
-
-conGraph = generate_constraint_graph(constraints);
+conGraph = generate_constraint_graph(constraints, size(data,1));
 [nChunklets,chunklets] = generate_chunklets(conGraph);
 staticSharedData = struct( 'constraints', constraints, 'conGraph', conGraph,...
 	                         'data', data, 'nChunklets', nChunklets, 'chunklets', chunklets);
 
 [Pfeas Pinfeas] = initialize_with_constraints(staticSharedData, configPrm);
-for g=1:maxGenerations
+
+for g=1:configPrm.maxGenerations
 
 	%TODO Trocar para parfor quando for rodar em paralelo
 	newFeasibleSolutions = [];
@@ -60,21 +65,21 @@ for g=1:maxGenerations
 		indiv = Pfeas(i);
 
 		[indiv,gmmObj] = refinement(indiv, data, configPrm);
-		[feas infeas] = insert_individual_correct_pool(indiv, gmmObj, sharedData,[], []);
+		[feas infeas] = insert_individual_correct_pool(indiv, gmmObj, staticSharedData,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 
-		new_indiv = feasible_mutation(indiv, gmmObj, data, configPrm);
+		new_indiv = feasible_mutation(indiv, gmmObj, staticSharedData, configPrm);
 		[new_indiv,gmmObjNew] = refinement(new_indiv, data, configPrm);
-		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObjNew, sharedData,[], []);
+		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObjNew, staticSharedData,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 	end
 
 	for i=1:length(Pinfeas)
 		indiv = Pinfeas(i);
-		[new_indiv,gmmObj] = infeasible_mutation(indiv, data, configPrm);
-		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObj, sharedData,[], []);
+		[new_indiv,gmmObj] = infeasible_mutation(indiv, staticSharedData, configPrm);
+		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObj, staticSharedData,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 	end
@@ -94,12 +99,12 @@ for g=1:maxGenerations
 	end
 
 
-	%fprintf('\n-%.2f (%.2f)\n',mean([ P(:).numClusters ]), std([P(:).numClusters]))
+	%fprintf('\n-%.2f (%.2f)\n',mean([ P(:).nClusters ]), std([P(:).nClusters]))
 	if EXTRA_INFO
 		INFO_FIT(g,:) = [ Pfeas(:).fitness ];
-		INFO_K(g,:) = [ Pfeas(:).numClusters ];
+		INFO_K(g,:) = [ Pfeas(:).nClusters ];
 		INFO_FIT2(g,:) = [ Pinfeas(:).fitness ];
-		INFO_K2(g,:) = [ Pinfeas(:).numClusters ];
+		INFO_K2(g,:) = [ Pinfeas(:).nClusters ];
 		save(EXTRA_INFO, 'INFO_FIT', 'INFO_K', 'INFO_FIT2', 'INFO_K2');
 	end
 
@@ -135,6 +140,8 @@ end
 function testFIECEM
 	data = mvnrnd([repmat([3 3],100,1); repmat([20 20], 100, 1)], [1 1]);
 	constraints = [ 1 2 1; 5 90 1; 110 90 -1; 122 159 1];
-	configPRM = struct('maxKMSIters',2)
-	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM)
+	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
+		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
+		'maxInitTries',10);
+	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
 end

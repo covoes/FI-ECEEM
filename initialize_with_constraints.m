@@ -8,8 +8,8 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 
 	Pfeas = [];
 	Pinfeas = [];
-	sizePopFeasible = configPrm.sizePopFeasible;
-	sizePopInfeasible = configPrm.sizePopInfeasible;
+	sizePopFeasible = configPrm.sizePopulation;
+	sizePopInfeasible = configPrm.sizePopulation;
 	opts = statset('MaxIter',configPrm.maxKMSIter);
 	nClusters = generate_nclusters(sizePopFeasible,configPrm);
 
@@ -45,24 +45,6 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 
 	Pfeas = Pfeas(1:min(length(Pfeas),sizePopFeasible));
 	Pinfeas = Pinfeas(1:min(length(Pinfeas),sizePopInfeasible));
-end
-
-
-function [nChunklets outChunklets] = generate_chunklets(conGraph)
-	MLs = conGraph>0;
-	[nChunklets chunklets] = graphconncomp(MLs, 'Directed', false);
-	validLabel = 1;
-	outChunklets = chunklets;
-	for i=1:nChunklets
-		idx = find(chunklets == i);
-		if numel(idx) == 1
-			nChunklets = nChunklets - 1;
-			outChunklets(idx) = 0;
-		else
-			outChunklets(idx) = validLabel;
-			validLabel = validLabel + 1;
-		end
-	end
 end
 
 function [individual,gmmObj] = initialize_gmm(data, k, init, opts)
@@ -120,8 +102,6 @@ function individual = create_empty_individual
 		individual = struct( 'mean', [], ...
 					 'covariance', [], ...
 					 'mixCoef', [], ...
-					 'distance', [], ...
-					 'determinant',NaN,  ...
 			     'classOfCluster', [], ...
 					 'nClusters',NaN, ...
 					 'fitness', NaN);
@@ -136,7 +116,6 @@ function nClusters = generate_nclusters(nIndividuals,cfg)
 end
 
 function unittests
-	testGenerateChunklets
 	testInitializeWithConstraints
 	testSpreadChunklets
 	testGenerateNClusters
@@ -144,19 +123,12 @@ function unittests
 	testSampleInitialSeedsOfChunklets
 end
 
-function testGenerateChunklets
-	graph = generate_constraint_graph([1 3 1; 6 7 1; 4 5 -1], 7);
-	[outNchunk chunklets] = generate_chunklets(graph);
-	assertEqual(outNchunk, 2)
-	assertEqual(chunklets, [1 0 1 0 0 2 2])
-end
-
 function testInitializeWithConstraints
 	data = [ 1 2; 1 3; 2 4; 5 5; 9 10; 10 11; 12 12];
 	con = [1 3 1;3 5 -1; 4 6 -1; 5 6 1];
 	conHard = generate_constraint_graph(con, size(data,1));
 	configPrm = struct('minClusters',2,'maxClusters',4, 'maxKMSIter',3, ...
-		                 'sizePopFeasible',4, 'sizePopInfeasible', 4,...
+		                 'sizePopulation', 4,...
 	                   'maxInitTries', 10, 'DEBUG',0);
 
 	rng(42);
@@ -164,8 +136,8 @@ function testInitializeWithConstraints
 	shared = struct('data', data, 'constraints', con,'chunklets', chunklets,...
 	               	'nChunklets', nChunklets, 'conGraph', conHard);
 	[outFeas outInfeas] = initialize_with_constraints(shared, configPrm);
-	assertEqual(length(outFeas), configPrm.sizePopFeasible)
-	assertEqual(length(outInfeas), configPrm.sizePopInfeasible)
+	assertEqual(length(outFeas), configPrm.sizePopulation)
+	assertEqual(length(outInfeas), configPrm.sizePopulation)
 	assertTrue(all([outFeas(:).nClusters] >= configPrm.minClusters),'Numero de clusters invalido')
   assertTrue(all([outFeas(:).nClusters] <= configPrm.maxClusters),'Numero de clusters invalido')
 	assertTrue(all([outInfeas(:).nClusters] >= configPrm.minClusters),'Numero de clusters invalido')

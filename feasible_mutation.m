@@ -1,92 +1,88 @@
-function [P] = feasible_mutation(P, maxClusters, data, conGraph)
+function [indiv] = feasible_mutation(indiv, gmmObj, sharedData, configPrm)
 %FEASIBLE_MUTATION Performs mutation on the indivuals in the population
 
 global DEBUG;
 
-if ischar(P) && strcmp(P,'debug')
+if ischar(indiv) && strcmp(indiv,'debug')
 	unittests();
 	return
 end
 
+data = sharedData.data
+chunklets = sharedData.chunklets
 
-[nChunklets,chunklets] = generate_chunklets(conGraph);
+nClusters = indiv.nClusters;
+pElim = (nClusters-2)/(configPrm.maxClusters-2);
+if (rand() > pElim)
+	mutOpToApply = 'create';
+else
+	mutOpToApply = 'elim';
+end
 
-for i=1:length(P)
+if DEBUG
+	fprintf(DEBUG,'\n\n\n-----%s\n\n#MUTATION\nOLD INDIVIDUAL (%d):%s\n',mutOpToApply,i,info_individual(indiv));
+end
 
-	numClusters = P(i).numClusters;
-	pElim = (numClusters-2)/(maxClusters-2);
-	if (rand() > pElim)
-		mutOpToApply = 'create';
-	else
-		mutOpToApply = 'elim';
-	end
+posterior = gmmObj.posterior 
+oldIndiv = indiv;
+if strcmp(mutOpToApply,'elim')
+	%remove clusters
+	lnTerms = bsxfun(@plus, log(eps+indiv.mixCoef(1:nClusters)), log(eps+gauss));
+	%transform in positive so that higher values will have more probability to mutate
+	valuesMutationClusters = -1*sum(posterior .* lnTerms, 1);
+	[valuesSorted idxSorted] = sort( valuesMutationClusters );
+	valuesMutationClusters( idxSorted ) = 1:nClusters;
 
-	if DEBUG
-		fprintf(DEBUG,'\n\n\n-----%s\n\n#MUTATION\nOLD INDIVIDUAL (%d):%s\n',mutOpToApply,i,info_individual(P(i)));
-	end
-
-
-	[posterior gauss] = computePosterior( P(i), data );
-	oldIndiv = P(i);
-	if strcmp(mutOpToApply,'elim')
-		%remove clusters
-		lnTerms = bsxfun(@plus, log(eps+P(i).mixCoef(1:numClusters)), log(eps+gauss));
-		%transform in positive so that higher values will have more probability to mutate
-		valuesMutationClusters = -1*sum(posterior .* lnTerms, 1);
-		[valuesSorted idxSorted] = sort( valuesMutationClusters );
-		valuesMutationClusters( idxSorted ) = 1:numClusters;
-
-		probs = valuesMutationClusters ./ sum(valuesMutationClusters);
-		for c=1:length(unique(P(i).classOfCluster))
-			if sum(P(i).classOfCluster == c) == 1
-				probs(P(i).classOfCluster == c) = 0
-			end
-		end
-		z = randi([1 numClusters-2]);
-		%chosen are the clusters selected for removal
-		chosen = roulette_without_reposition( probs, z );
-		survivors = setdiff(1:numClusters, chosen);
-		P(i).mean = P(i).mean(survivors,:);
-		P(i).covariance = P(i).covariance(survivors,:);
-		P(i).mixCoef = P(i).mixCoef(survivors);
-		%re-normalize
-		P(i).mixCoef = P(i).mixCoef ./ nansum(P(i).mixCoef);
-		P(i).numClusters = length(survivors);
-	else
-		%create new clusters
-		logsPost = log2(eps+posterior);
-		objEntropies = -sum(posterior.*logsPost,2);
-
-		[valuesSorted idxSorted] = sort( objEntropies );
-		objEntropies( idxSorted ) = 1:length(objEntropies);
-
-		probs = objEntropies./sum(objEntropies);
-		z = randi([1 maxClusters-numClusters]);
-		%chosen are the objects that will be used to create clusters
-		chosen = roulette_without_reposition( probs, z );
-		variances = var(data);
-		P(i).numClusters = numClusters + z;
-		%recover the clusters that were most probable to generate these points
-		[~,oldClusters] = max(posterior(chosen,:), [], 2);
-		for nc=1:z
-			P(i).mean(numClusters+nc,:) = data(chosen(nc),:);
-			P(i).covariance(numClusters+nc,:) = squareformSymmetric( 0.1*diag(variances) );
-			P(i).mixCoef(numClusters+nc) = P(i).mixCoef(oldClusters(nc))/2;
-			P(i).mixCoef(oldClusters(nc)) = P(i).mixCoef(oldClusters(nc))/2;
-			P(i).classOfCluster(numClusters+nc,:) = pickClass(chosen(nc), data, chunklets)
+	probs = valuesMutationClusters ./ sum(valuesMutationClusters);
+	for c=1:length(unique(indiv.classOfCluster))
+		if sum(indiv.classOfCluster == c) == 1
+			probs(indiv.classOfCluster == c) = 0
 		end
 	end
+	z = randi([1 nClusters-2]);
+	%chosen are the clusters selected for removal
+	chosen = roulette_without_reposition( probs, z );
+	survivors = setdiff(1:nClusters, chosen);
+	indiv.mean = indiv.mean(survivors,:);
+	indiv.covariance = indiv.covariance(survivors,:);
+	indiv.mixCoef = indiv.mixCoef(survivors);
+	%re-normalize
+	indiv.mixCoef = indiv.mixCoef ./ nansum(indiv.mixCoef);
+	indiv.nClusters = length(survivors);
+else
+	%create new clusters
+	logsPost = log2(eps+posterior);
+	objEntropies = -sum(posterior.*logsPost,2);
 
-	if DEBUG
-		assert(P(i).numClusters >= 2, 'Too few clusters')
-		assert(P(i).numClusters <= maxClusters, 'Too many clusters')
-		fprintf(DEBUG,'#MUTATION\nNEW INDIVIDUAL (%d):%s\n',i,info_individual(P(i)));
+	[valuesSorted idxSorted] = sort( objEntropies );
+	objEntropies( idxSorted ) = 1:length(objEntropies);
+
+	probs = objEntropies./sum(objEntropies);
+	z = randi([1 configPrm.maxClusters-nClusters]);
+	%chosen are the objects that will be used to create clusters
+	chosen = roulette_without_reposition( probs, z );
+	variances = var(data);
+	indiv.nClusters = nClusters + z;
+	%recover the clusters that were most probable to generate these points
+	[~,oldClusters] = max(posterior(chosen,:), [], 2);
+	for nc=1:z
+		indiv.mean(nClusters+nc,:) = data(chosen(nc),:);
+		indiv.covariance(nClusters+nc,:) = squareformSymmetric( 0.1*diag(variances) );
+		indiv.mixCoef(nClusters+nc) = indiv.mixCoef(oldClusters(nc))/2;
+		indiv.mixCoef(oldClusters(nc)) = indiv.mixCoef(oldClusters(nc))/2;
+		indiv.classOfCluster(nClusters+nc,:) = pickClass(chosen(nc), data, chunklets)
 	end
+end
+
+if DEBUG
+	assert(indiv.nClusters >= 2, 'Too few clusters')
+	assert(indiv.nClusters <= configPrm.maxClusters, 'Too many clusters')
+	fprintf(DEBUG,'#MUTATION\nNEW INDIVIDUAL (%d):%s\n',i,info_individual(indiv));
+end
 
 
 end
 
-end
 
 function [closestClass] = pickClass(idxObj, data, chunklets)
 	if chunklets(idxObj) > 0

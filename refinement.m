@@ -1,4 +1,4 @@
-function [indiv, objEM] = refinement(indiv, data, cfgPrm)
+function [indiv, gmmObj] = refinement(indiv, data, cfgPrm)
 %Refines each individual of the population using EM
 
 if isfield(cfgPrm,'DEBUG')
@@ -14,7 +14,7 @@ statOpts = statset('MaxIter', cfgPrm.maxEMIter, 'TolFun', 1e-5);
 [nClusters means covs mixingCoefficients] = gmm_parameters_from_individual(indiv, nFeatures);
 
 if DEBUG
-	fprintf(DEBUG,'#REFINEMENT\nOLD INDIVIDUAL (%d):%s\n',i,info_individual(indiv));
+	fprintf(DEBUG,'#REFINEMENT\nOLD INDIVIDUAL :%s\n',info_individual(indiv));
 end
 
 
@@ -28,6 +28,7 @@ catch err
 		fprintf(DEBUG,'\nProblem with refinement, keeping old solution.\n%s\n',info_individual(indiv))
 	end
 	objEM = gmdistribution(means, covs, mixingCoefficients);
+	gmmObj = gera_struct_gmm_obj();
 	return
 end
 
@@ -46,6 +47,18 @@ end
 
 if DEBUG
 	fprintf(DEBUG,'\nNEW INDIVIDUAL:%s\n', info_individual(indiv));
+end
+
+gmmObj = gera_struct_gmm_obj() ;
+
+
+function [gmmObj] = gera_struct_gmm_obj
+	[idx,nlogl,post,logpdf,mahalad] = cluster(objEM, data);
+	pdf = zeros(size(data,1), objEM.NComponents);
+	for kk=1:objEM.NComponents
+		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),objEM.Sigma(:,:,kk));
+	end
+	gmmObj = struct('modelo', objEM, 'posterior', post, 'pdf', pdf);
 end
 
 end

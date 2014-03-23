@@ -21,7 +21,7 @@ end
 function isF = isFeasible(individual, conGraph, data,gmmObj)
 	[i j s] = find(conGraph);
 	constraints = [ i j s ];
-	idxVio = compute_penalty(individual, data, constraints, posterior(gmmObj, data));
+	idxVio = compute_penalty(individual, data, constraints, gmmObj.posterior);
 	isF = idxVio == false;
 end
 

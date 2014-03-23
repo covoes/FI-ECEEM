@@ -14,10 +14,10 @@ end
 
 for i=1:length(P)
 
-	numClusters = P(i).numClusters;
+	nClusters = P(i).nClusters;
 	penalties = penaltiesByCon(i,:);
 	penalties = penalties./sum(penalties);
-	maxClustersToCreate = maxClusters - numClusters;
+	maxClustersToCreate = maxClusters - nClusters;
 	constraintsToFix = randi(maxClustersToCreate,1) 
 	chosen = roulette(penalties,constraintsToFix)
 
@@ -27,7 +27,7 @@ for i=1:length(P)
 		[po1,ko1] = pdfs(con(1),:)
 		%TODO Terminar aqui
 	end
-	pElim = (numClusters-2)/(maxClusters-2);
+	pElim = (nClusters-2)/(maxClusters-2);
 	if (rand() > pElim)
 		mutOpToApply = 'create';
 	else
@@ -43,11 +43,11 @@ for i=1:length(P)
 	oldIndiv = P(i);
 	if strcmp(mutOpToApply,'elim')
 		%remove clusters
-		lnTerms = bsxfun(@plus, log(eps+P(i).mixCoef(1:numClusters)), log(eps+gauss));
+		lnTerms = bsxfun(@plus, log(eps+P(i).mixCoef(1:nClusters)), log(eps+gauss));
 		%transform in positive so that higher values will have more probability to mutate
 		valuesMutationClusters = -1*sum(posterior .* lnTerms, 1);
 		[valuesSorted idxSorted] = sort( valuesMutationClusters );
-		valuesMutationClusters( idxSorted ) = 1:numClusters;
+		valuesMutationClusters( idxSorted ) = 1:nClusters;
 
 		probs = valuesMutationClusters ./ sum(valuesMutationClusters);
 		for c=1:length(unique(P(i).classOfCluster))
@@ -55,16 +55,16 @@ for i=1:length(P)
 				probs(P(i).classOfCluster == c) = 0
 			end
 		end
-		z = randi([1 numClusters-2]);
+		z = randi([1 nClusters-2]);
 		%chosen are the clusters selected for removal
 		chosen = roulette_without_reposition( probs, z );
-		survivors = setdiff(1:numClusters, chosen);
+		survivors = setdiff(1:nClusters, chosen);
 		P(i).mean = P(i).mean(survivors,:);
 		P(i).covariance = P(i).covariance(survivors,:);
 		P(i).mixCoef = P(i).mixCoef(survivors);
 		%re-normalize
 		P(i).mixCoef = P(i).mixCoef ./ nansum(P(i).mixCoef);
-		P(i).numClusters = length(survivors);
+		P(i).nClusters = length(survivors);
 	else
 		%create new clusters
 		logsPost = log2(eps+posterior);
@@ -74,25 +74,25 @@ for i=1:length(P)
 		objEntropies( idxSorted ) = 1:length(objEntropies);
 
 		probs = objEntropies./sum(objEntropies);
-		z = randi([1 maxClusters-numClusters]);
+		z = randi([1 maxClusters-nClusters]);
 		%chosen are the objects that will be used to create clusters
 		chosen = roulette_without_reposition( probs, z );
 		variances = var(data);
-		P(i).numClusters = numClusters + z;
+		P(i).nClusters = nClusters + z;
 		%recover the clusters that were most probable to generate these points
 		[~,oldClusters] = max(posterior(chosen,:), [], 2);
 		for nc=1:z
-			P(i).mean(numClusters+nc,:) = data(chosen(nc),:);
-			P(i).covariance(numClusters+nc,:) = squareformSymmetric( 0.1*diag(variances) );
-			P(i).mixCoef(numClusters+nc) = P(i).mixCoef(oldClusters(nc))/2;
+			P(i).mean(nClusters+nc,:) = data(chosen(nc),:);
+			P(i).covariance(nClusters+nc,:) = squareformSymmetric( 0.1*diag(variances) );
+			P(i).mixCoef(nClusters+nc) = P(i).mixCoef(oldClusters(nc))/2;
 			P(i).mixCoef(oldClusters(nc)) = P(i).mixCoef(oldClusters(nc))/2;
-			P(i).classOfCluster(numClusters+nc,:) = pickClass(chosen(nc), data, chunklets)
+			P(i).classOfCluster(nClusters+nc,:) = pickClass(chosen(nc), data, chunklets)
 		end
 	end
 
 	if DEBUG
-		assert(P(i).numClusters >= 2, 'Too few clusters')
-		assert(P(i).numClusters <= maxClusters, 'Too many clusters')
+		assert(P(i).nClusters >= 2, 'Too few clusters')
+		assert(P(i).nClusters <= maxClusters, 'Too many clusters')
 		fprintf(DEBUG,'#MUTATION\nNEW INDIVIDUAL (%d):%s\n',i,info_individual(P(i)));
 	end
 
