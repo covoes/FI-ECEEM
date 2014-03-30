@@ -1,5 +1,5 @@
 function [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(individual, data, constraints, pdfs)
-	%COMPUTE_PENALTY Compute a penalty score for each individual 
+%COMPUTE_PENALTY Compute a penalty score for a individual 
 
 	if ischar(individual) && strcmp(individual,'debug')
 		unittests()

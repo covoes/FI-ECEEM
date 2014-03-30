@@ -23,7 +23,8 @@ if DEBUG
 	fprintf(DEBUG,'\n\n\n-----%s\n\n#MUTATION\nOLD INDIVIDUAL (%d):%s\n',mutOpToApply,i,info_individual(indiv));
 end
 
-posterior = gmmObj.posterior 
+posterior = gmmObj.posterior;
+gauss = gmmObj.pdf;
 oldIndiv = indiv;
 if strcmp(mutOpToApply,'elim')
 	%remove clusters
@@ -39,6 +40,9 @@ if strcmp(mutOpToApply,'elim')
 			probs(indiv.classOfCluster == c) = 0
 		end
 	end
+	if all(probs==0)
+		return
+	end	
 	z = randi([1 nClusters-2]);
 	%chosen are the clusters selected for removal
 	chosen = roulette_without_reposition( probs, z );
@@ -62,15 +66,10 @@ else
 	%chosen are the objects that will be used to create clusters
 	chosen = roulette_without_reposition( probs, z );
 	variances = var(data);
-	indiv.nClusters = nClusters + z;
 	%recover the clusters that were most probable to generate these points
-	[~,oldClusters] = max(posterior(chosen,:), [], 2);
+	oldClusters = gmmObj.clusterLabels;
 	for nc=1:z
-		indiv.mean(nClusters+nc,:) = data(chosen(nc),:);
-		indiv.covariance(nClusters+nc,:) = squareformSymmetric( 0.1*diag(variances) );
-		indiv.mixCoef(nClusters+nc) = indiv.mixCoef(oldClusters(nc))/2;
-		indiv.mixCoef(oldClusters(nc)) = indiv.mixCoef(oldClusters(nc))/2;
-		indiv.classOfCluster(nClusters+nc,:) = pickClass(chosen(nc), data, chunklets)
+		indiv = create_cluster(indiv, chosen(nc), data, chunklets, oldClusters);
 	end
 end
 
@@ -83,35 +82,4 @@ end
 
 end
 
-
-function [closestClass] = pickClass(idxObj, data, chunklets)
-	if chunklets(idxObj) > 0
-		closestClass = chunklets(idxObj);
-	else
-		labeled = data(chunklets>0,:);
-		classes = chunklets(chunklets>0);
-		closestClass = NaN;
-		dists = pdist2(data(idxObj,:), labeled, 'euclidean');
-		dists = max(dists)-dists;
-		dists = dists/sum(dists);
-		chosen = roulette(dists, 1);
-		closestClass = classes(chosen);
-	end
-end
-
-function unittests
-	testPickClass;
-end
-
-function testPickClass
-	chunklets = [1 0 1 0 0 2 2];
-	data = [ 1 2; 2 2; 1 2; 4 4; 80 80; 100 90; 120 100];
-	assert(pickClass(1, data, chunklets) == 1)
-	assert(pickClass(2, data, chunklets) == 1)
-	assert(pickClass(3, data, chunklets) == 1)
-	assert(pickClass(4, data, chunklets) == 1)
-	assert(pickClass(5, data, chunklets) == 2)
-	assert(pickClass(6, data, chunklets) == 2)
-	assert(pickClass(7, data, chunklets) == 2)
-end
 

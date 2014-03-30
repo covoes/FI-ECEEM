@@ -22,13 +22,14 @@ end
 
 
 global EMSteps;
-global DEBUG;
 
 EXTRA_INFO=0;
 %EXTRA_INFO='extraInfo.mat';
 
 
-DEBUG=0;
+if ~isfield(configPrm,'DEBUG')
+	configPrm.DEBUG=0;
+end
 %DEBUG=fopen('debug.txt','w');
 
 tIni = tic;
@@ -64,13 +65,13 @@ for g=1:configPrm.maxGenerations
 	for i=1:length(Pfeas)
 		indiv = Pfeas(i);
 
-		[indiv,gmmObj] = refinement(indiv, data, configPrm);
+		[indiv,gmmObj] = refinement(indiv, staticSharedData, configPrm);
 		[feas infeas] = insert_individual_correct_pool(indiv, gmmObj, staticSharedData,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 
 		new_indiv = feasible_mutation(indiv, gmmObj, staticSharedData, configPrm);
-		[new_indiv,gmmObjNew] = refinement(new_indiv, data, configPrm);
+		[new_indiv,gmmObjNew] = refinement(new_indiv, staticSharedData, configPrm);
 		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObjNew, staticSharedData,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
@@ -78,7 +79,9 @@ for g=1:configPrm.maxGenerations
 
 	for i=1:length(Pinfeas)
 		indiv = Pinfeas(i);
-		[new_indiv,gmmObj] = infeasible_mutation(indiv, staticSharedData, configPrm);
+		[indiv, gmmObj] = refinement(indiv, staticSharedData, configPrm, 1);
+		[new_indiv] = infeasible_mutation(indiv, gmmObj, staticSharedData, configPrm);
+		[new_indiv, gmmObj] = refinement(new_indiv, staticSharedData, configPrm, 1);
 		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObj, staticSharedData,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
@@ -86,7 +89,7 @@ for g=1:configPrm.maxGenerations
 
 	feasiblePool = fitness_based_selection(Pfeas, newFeasibleSolutions);
 
-	infeasiblePool = constraint_based_selection(Pinfeas, newInfeasibleSolutions, staticSharedData);
+	infeasiblePool = constraint_based_selection(Pinfeas, newInfeasibleSolutions);
 
 	[feasiblePool infeasiblePool] = ...
 			fill_pools_if_needed(feasiblePool, infeasiblePool, configPrm.minSizePop);

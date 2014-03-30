@@ -1,5 +1,7 @@
-function [indiv, gmmObj] = refinement(indiv, data, cfgPrm)
+function [indiv, gmmObj] = refinement(indiv, sharedData, cfgPrm, doNotRunEM)
 %Refines each individual of the population using EM
+%
+% If doNotRunEM equals 1, only construct the gmmObj, no optimization is performed.
 
 if isfield(cfgPrm,'DEBUG')
 	DEBUG = cfgPrm.DEBUG;
@@ -7,11 +9,23 @@ else
 	DEBUG = 0;
 end
 
+if nargin < 4
+	doNotRunEM = 0;
+end
+
+data = sharedData.data;
+constraints = sharedData.constraints;
+
 [nObjects nFeatures] = size(data);
 
-statOpts = statset('MaxIter', cfgPrm.maxEMIter, 'TolFun', 1e-5);
+[nClusters means covs mixingCoefficients objEM] = gmm_parameters_from_individual(indiv, nFeatures);
 
-[nClusters means covs mixingCoefficients] = gmm_parameters_from_individual(indiv, nFeatures);
+if doNotRunEM
+	gmmObj = gera_struct_gmm_obj() ;
+	return
+end
+
+statOpts = statset('MaxIter', cfgPrm.maxEMIter, 'TolFun', 1e-5);
 
 if DEBUG
 	fprintf(DEBUG,'#REFINEMENT\nOLD INDIVIDUAL :%s\n',info_individual(indiv));
@@ -27,7 +41,6 @@ catch err
 	if DEBUG
 		fprintf(DEBUG,'\nProblem with refinement, keeping old solution.\n%s\n',info_individual(indiv))
 	end
-	objEM = gmdistribution(means, covs, mixingCoefficients);
 	gmmObj = gera_struct_gmm_obj();
 	return
 end
@@ -58,13 +71,17 @@ function [gmmObj] = gera_struct_gmm_obj
 	for kk=1:objEM.NComponents
 		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),objEM.Sigma(:,:,kk));
 	end
-	gmmObj = struct('modelo', objEM, 'posterior', post, 'pdf', pdf);
+  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, data, constraints, pdf);
+	gmmObj = struct('modelo', objEM, 'posterior', post, 'pdf', pdf, ...
+		              'clusterLabels', idx, 'classLabels', indiv.classOfCluster(idx), ...
+		              'isFeasible', ~isInfeasible, 'totPenalty', totPenalty, ...
+		              'penalties', penaltyByCon);
 end
 
 end
 
 
-function [nClusters means covs mixingCoefficients] = gmm_parameters_from_individual(indiv,nFeatures)
+function [nClusters means covs mixingCoefficients,objEM] = gmm_parameters_from_individual(indiv,nFeatures)
 	nClusters = indiv.nClusters;
 	covs = zeros( nFeatures, nFeatures, nClusters );
 	means = indiv.mean(1:nClusters,:);
@@ -74,4 +91,5 @@ function [nClusters means covs mixingCoefficients] = gmm_parameters_from_individ
 		covs(:,:,k) = squareformSymmetric( indiv.covariance(k,:) );
 	end
 	mixingCoefficients = indiv.mixCoef(1:nClusters);
+	objEM = gmdistribution(means,covs,mixingCoefficients);
 end

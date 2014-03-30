@@ -22,11 +22,10 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	while length(Pfeas) < sizePopFeasible && configPrm.maxInitTries > nTry
 		nTry = nTry + 1;
 		k = nClusters(length(Pfeas)+1);
-		classOfClusters = spread_chunklets_among_clusters(nChunklets, k);
-		seeds = sample_initial_seeds_off_chunklets(chunklets, classOfClusters);
+		classOfCluster = spread_chunklets_among_clusters(nChunklets, k);
+		seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster);
 		initMatrix = data(seeds,:);
-		[individual,gmmObj] = initialize_gmm(data, k, initMatrix, opts);
-		individual.classOfCluster = classOfClusters;
+		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
 		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, sharedData, ...
 			                                               Pfeas, Pinfeas);
 	end
@@ -36,8 +35,8 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 		nTry = nTry + 1;
 		k = nClusters(length(Pinfeas)+1);
 		initMatrix = data(randsample(size(data,1),k),:);
-		[individual,gmmObj] = initialize_gmm(data, k, initMatrix, opts);
-		individual.classOfCluster = randi([1 configPrm.minClusters], k) ;
+		classOfCluster = randi([1 configPrm.minClusters], k) ;
+		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
 
 		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, sharedData, Pfeas, ...
 			                                               Pinfeas);
@@ -47,20 +46,22 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	Pinfeas = Pinfeas(1:min(length(Pinfeas),sizePopInfeasible));
 end
 
-function [individual,gmmObj] = initialize_gmm(data, k, init, opts)
-	[idx, clusters] = kmeans(data, k, 'EmptyAction', 'singleton', 'Start', init, 'Options', opts);
-	individual = gmmFromKmeans(idx, clusters, data);
-	[individual,gmmObj] = one_em_step(individual, data);
+function [individual,gmmObj] = initialize_gmm(sharedData, k, init, opts, classOfCluster)
+	[idx, clusters] = kmeans(sharedData.data, k, 'EmptyAction', 'singleton',...
+	                       	'Start', init, 'Options', opts);
+	individual = gmmFromKmeans(idx, clusters, sharedData.data);
+	individual.classOfCluster = classOfCluster;
+	[individual,gmmObj] = one_em_step(individual, sharedData);
 end
 
-function [individual,gmmObj] = one_em_step(individual, data)
-	[individual,gmmObj] = refinement(individual, data, struct('maxEMIter',1));
+function [individual,gmmObj] = one_em_step(individual, sharedData)
+	[individual,gmmObj] = refinement(individual, sharedData, struct('maxEMIter',1));
 end
 
-function seeds = sample_initial_seeds_off_chunklets(chunklets, classOfClusters)
-	seeds = NaN([1 length(classOfClusters)]);
-	for k=1:length(classOfClusters)
-		candidates = find(chunklets==classOfClusters(k));
+function seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster)
+	seeds = NaN([1 length(classOfCluster)]);
+	for k=1:length(classOfCluster)
+		candidates = find(chunklets==classOfCluster(k));
 		if length(candidates) == 1
 			seeds(k) = candidates;
 		else
@@ -88,12 +89,12 @@ function gmm = gmmFromKmeans(idx, clusters, data)
 end
 
 
-function [classOfClusters] = spread_chunklets_among_clusters(nChunklets, k)
+function [classOfCluster] = spread_chunklets_among_clusters(nChunklets, k)
 	clustersToMap = k;
-	classOfClusters = [];
+	classOfCluster = [];
 	while clustersToMap > 0
 		nToSample = min([nChunklets, clustersToMap]);
-		classOfClusters = [classOfClusters;randsample(nChunklets,nToSample)];
+		classOfCluster = [classOfCluster;randsample(nChunklets,nToSample)];
 		clustersToMap = clustersToMap - nToSample;
 	end
 end

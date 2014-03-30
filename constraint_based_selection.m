@@ -1,16 +1,10 @@
-function [feasiblePool infeasiblePool] = constraint_based_selection(P, Pmut, constraints, feasiblePool, infeasiblePool, data)
+function [infeasiblePool] = constraint_based_selection(P, Pmut)
 %CONSTRAINT_BASED_SELECTION Performs (mu+lambda) selection filtering solutions that violates constraints
 %
 %Assumes that the intent is to minimize the fitness function
-	global DEBUG;
-	fullPop = [ P'; Pmut' ];
-	%filter invalid solutions
-	[idxVio,~] = compute_penalty(fullPop, constraints, data);
-	infeasiblePool = [infeasiblePool'; fullPop(idxVio)];
-	fullPop(idxVio) = [];
+	fullPop = [ P(:); Pmut(:) ];
 	%perform mu-lambda selection
-	fitness = [fullPop(:).fitness];
+	fitness = [fullPop(:).totPenalty];
 	[~,idxSorted] = sort(fitness,'ascend');
-	P = fullPop(idxSorted(1:sizePopulation));
-	feasiblePool = [feasiblePool'; P'];
+	infeasiblePool = fullPop(idxSorted);
 end
