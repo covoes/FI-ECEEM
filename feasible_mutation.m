@@ -8,8 +8,8 @@ if ischar(indiv) && strcmp(indiv,'debug')
 	return
 end
 
-data = sharedData.data
-chunklets = sharedData.chunklets
+data = sharedData.data;
+chunklets = sharedData.chunklets;
 
 nClusters = indiv.nClusters;
 pElim = (nClusters-2)/(configPrm.maxClusters-2);
@@ -20,7 +20,8 @@ else
 end
 
 if DEBUG
-	fprintf(DEBUG,'\n\n\n-----%s\n\n#MUTATION\nOLD INDIVIDUAL (%d):%s\n',mutOpToApply,i,info_individual(indiv));
+	fprintf(DEBUG,'\n\n\n-----%s\n\n#MUTATION\nOLD INDIVIDUAL :%s\n',...
+		           mutOpToApply,info_individual(indiv));
 end
 
 posterior = gmmObj.posterior;
@@ -34,12 +35,12 @@ if strcmp(mutOpToApply,'elim')
 	[valuesSorted idxSorted] = sort( valuesMutationClusters );
 	valuesMutationClusters( idxSorted ) = 1:nClusters;
 
-	probs = valuesMutationClusters ./ sum(valuesMutationClusters);
 	for c=1:length(unique(indiv.classOfCluster))
 		if sum(indiv.classOfCluster == c) == 1
-			probs(indiv.classOfCluster == c) = 0
+			valuesMutationClusters(indiv.classOfCluster == c) = 0;
 		end
 	end
+	probs = valuesMutationClusters ./ sum(valuesMutationClusters);
 	if all(probs==0)
 		return
 	end	
@@ -65,7 +66,6 @@ else
 	z = randi([1 configPrm.maxClusters-nClusters]);
 	%chosen are the objects that will be used to create clusters
 	chosen = roulette_without_reposition( probs, z );
-	variances = var(data);
 	%recover the clusters that were most probable to generate these points
 	oldClusters = gmmObj.clusterLabels;
 	for nc=1:z
@@ -76,7 +76,7 @@ end
 if DEBUG
 	assert(indiv.nClusters >= 2, 'Too few clusters')
 	assert(indiv.nClusters <= configPrm.maxClusters, 'Too many clusters')
-	fprintf(DEBUG,'#MUTATION\nNEW INDIVIDUAL (%d):%s\n',i,info_individual(indiv));
+	fprintf(DEBUG,'#MUTATION\nNEW INDIVIDUAL :%s\n',info_individual(indiv));
 end
 
 

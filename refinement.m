@@ -71,17 +71,18 @@ function [gmmObj] = gera_struct_gmm_obj
 	for kk=1:objEM.NComponents
 		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),objEM.Sigma(:,:,kk));
 	end
-  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, data, constraints, pdf);
+  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, data, constraints, post);
 	gmmObj = struct('modelo', objEM, 'posterior', post, 'pdf', pdf, ...
 		              'clusterLabels', idx, 'classLabels', indiv.classOfCluster(idx), ...
-		              'isFeasible', ~isInfeasible, 'totPenalty', totPenalty, ...
-		              'penalties', penaltyByCon);
+		              'isFeasible', ~isInfeasible, 'penalties', penaltyByCon);
+	indiv.totPenalty = totPenalty;
 end
 
 end
 
 
-function [nClusters means covs mixingCoefficients,objEM] = gmm_parameters_from_individual(indiv,nFeatures)
+function [nClusters means covs mixingCoefficients,objEM] = ...
+	                             	gmm_parameters_from_individual(indiv,nFeatures)
 	nClusters = indiv.nClusters;
 	covs = zeros( nFeatures, nFeatures, nClusters );
 	means = indiv.mean(1:nClusters,:);

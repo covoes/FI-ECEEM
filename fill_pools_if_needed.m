@@ -1,14 +1,13 @@
-function [feasiblePool infeasiblePool] = fill_pools_if_needed(feasiblePool, infeasiblePool,
-						minSizePop)
+function [feasiblePool infeasiblePool] = fill_pools_if_needed(sharedData, ...
+		feasiblePool, infeasiblePool,	configPrm)
 %SORT_AND_FILL_POOLS_IF_NEEDED Makes sure that each pool has minSizePop individuals
-%
-%If the feasiblePool has fewer than minSizePop individuals, new individuals are generated
-% using repair mechanisms in the individuals on the infeasiblePool.
-%For the infeasiblePool new individuals are generated randomly.
 
-infIndivToGenerate = minSizePop - len(infeasiblePool)
+infIndivToGenerate = configPrm.minSizePop - length(infeasiblePool);
+feasIndivToGenerate = configPrm.minSizePop - length(feasiblePool); 
 
-if infIndivToGenerate > 0
-	newIndiv = initialize(data, maxClusters, infIndivToGenerate, maxKMSIter)
-end
-needFeasible = len(feasiblePool) < minSizePop
+configPrm.sizePopulationFeasible = feasIndivToGenerate;
+configPrm.sizePopulationInfeasible = infIndivToGenerate;
+[feasiblePool2 infeasiblePool2] = initialize_with_constraints(sharedData, configPrm);
+
+feasiblePool = [ feasiblePool(:); feasiblePool2(:) ];
+infeasiblePool = [ infeasiblePool(:); infeasiblePool2(:) ];

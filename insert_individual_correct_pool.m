@@ -1,7 +1,7 @@
-function [Pfeas Pinfeas] = insert_individual_correct_pool(individual, gmmObj, sharedData, ...
+function [Pfeas Pinfeas] = insert_individual_correct_pool(individual, gmmObj, ...
 		                                                      Pfeas, Pinfeas)
 %INSERT_INDIVIDUAL_CORRECT_POOL Inserts a new individual in the feasible or infeasible pool
-	if isFeasible(individual, sharedData.conGraph, sharedData.data, gmmObj)
+	if gmmObj.isFeasible
 		idx = length(Pfeas);
 		if idx == 0
 			Pfeas = individual;
@@ -17,12 +17,3 @@ function [Pfeas Pinfeas] = insert_individual_correct_pool(individual, gmmObj, sh
 		end
 	end
 end
-
-function isF = isFeasible(individual, conGraph, data,gmmObj)
-	[i j s] = find(conGraph);
-	constraints = [ i j s ];
-	idxVio = compute_penalty(individual, data, constraints, gmmObj.posterior);
-	isF = idxVio == false;
-end
-
-

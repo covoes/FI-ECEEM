@@ -15,7 +15,8 @@ chunklets = sharedData.chunklets;
 conGraph = sharedData.conGraph;
 
 pdfs = gmmObj.posterior;
-[isInfeasible,totPenalty,penaltiesByCon] = compute_penalty(indiv, data, constraints, pdfs);
+totPenalty = indiv.totPenalty;
+penaltiesByCon = gmmObj.penalties;
 
 nClusters = indiv.nClusters;
 penalties = penaltiesByCon(:);

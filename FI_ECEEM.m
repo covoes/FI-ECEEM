@@ -47,6 +47,9 @@ for f=nonOptPrms
 	end
 end
 
+configPrm.sizePopulationFeasible = configPrm.sizePopulation;
+configPrm.sizePopulationInfeasible = configPrm.sizePopulation;
+
 EMSteps = 0;
 genWOImprov = 0;
 lastBestFitness = 0;
@@ -66,13 +69,13 @@ for g=1:configPrm.maxGenerations
 		indiv = Pfeas(i);
 
 		[indiv,gmmObj] = refinement(indiv, staticSharedData, configPrm);
-		[feas infeas] = insert_individual_correct_pool(indiv, gmmObj, staticSharedData,[], []);
+		[feas infeas] = insert_individual_correct_pool(indiv, gmmObj, [], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 
 		new_indiv = feasible_mutation(indiv, gmmObj, staticSharedData, configPrm);
 		[new_indiv,gmmObjNew] = refinement(new_indiv, staticSharedData, configPrm);
-		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObjNew, staticSharedData,[], []);
+		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObjNew,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 	end
@@ -82,7 +85,7 @@ for g=1:configPrm.maxGenerations
 		[indiv, gmmObj] = refinement(indiv, staticSharedData, configPrm, 1);
 		[new_indiv] = infeasible_mutation(indiv, gmmObj, staticSharedData, configPrm);
 		[new_indiv, gmmObj] = refinement(new_indiv, staticSharedData, configPrm, 1);
-		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObj, staticSharedData,[], []);
+		[feas infeas] = insert_individual_correct_pool(new_indiv, gmmObj,[], []);
 		newFeasibleSolutions = [newFeasibleSolutions; feas];
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 	end
@@ -92,10 +95,10 @@ for g=1:configPrm.maxGenerations
 	infeasiblePool = constraint_based_selection(Pinfeas, newInfeasibleSolutions);
 
 	[feasiblePool infeasiblePool] = ...
-			fill_pools_if_needed(feasiblePool, infeasiblePool, configPrm.minSizePop);
+			fill_pools_if_needed(staticSharedData, feasiblePool, infeasiblePool, configPrm);
 
-	Pfeas = feasiblePool(1:sizePopulation);
-	Pinfeas = infeasiblePool(1:sizePopulation);
+	Pfeas = feasiblePool(1:configPrm.sizePopulation);
+	Pinfeas = infeasiblePool(1:configPrm.sizePopulation);
 
 	if converged()
 		return
@@ -115,7 +118,7 @@ end
 
 tFinal = toc(tIni);
 
-function converged
+function converg = converged
 	[curBestFitness idx] = min([ Pfeas(:).fitness ]);
 	bestPartition = Pfeas(idx);
 
@@ -126,12 +129,12 @@ function converged
 			%no improvements in maxGenWOImprov iterations exit returning
 			%the current best partition
 			tFinal=toc(tIni);
-			return ;
+			converg = 1;
 		end
 	else
 		genWOImprov = 0;
 		lastBestFitness = curBestFitness;
-		return ;
+		converg = 0;
 	end
 end
 end
@@ -141,10 +144,13 @@ function unittests
 end
 
 function testFIECEM
-	data = mvnrnd([repmat([3 3],100,1); repmat([20 20], 100, 1)], [1 1]);
-	constraints = [ 1 2 1; 5 90 1; 110 90 -1; 122 159 1];
+	data = mvnrnd([repmat([3 3],300,1); repmat([20 20], 300, 1)], [1 1]);
+	constraints = [ 1 2 1; 5 90 1; 310 90 -1; 322 359 1];
 	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
 		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
 		'maxInitTries',10);
 	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
+	[~,idx] = min(pdist2(bestPartition.mean,[3 3; 20 20]),[],2);
+	mCorreta = [ 3 3; 20 20];
+	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.5)
 end

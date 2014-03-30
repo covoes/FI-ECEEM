@@ -3,7 +3,11 @@ function [feasiblePool] = fitness_based_selection(P, Pmut)
 %
 %Assumes that the intent is to minimize the fitness function
 	fullPop = [ P(:); Pmut(:) ]; 
-	fitness = [fullPop(:).fitness];
-	[bestFit idxSorted] = sort(fitness,'ascend');
-	feasiblePool = fullPop(idxSorted);
+	if length(fullPop) == 0
+		feasiblePool = [];
+	else
+		fitness = [fullPop(:).fitness];
+		[bestFit idxSorted] = sort(fitness,'ascend');
+		feasiblePool = fullPop(idxSorted);
+	end
 end

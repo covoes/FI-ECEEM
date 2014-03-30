@@ -1,4 +1,5 @@
-function [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(individual, data, constraints, pdfs)
+function [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(individual, chunklets, ...
+	                                   	constraints, pdfs)
 %COMPUTE_PENALTY Compute a penalty score for a individual 
 
 	if ischar(individual) && strcmp(individual,'debug')
@@ -16,10 +17,11 @@ function [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(individual, da
 		classK1 = individual.classOfCluster(k1);
 		classK2 = individual.classOfCluster(k2);
 		penalty = 0;
-		if typeCon == 1 && classK1 ~= classK2
+		if typeCon == 1 && ~(classK1 == classK2 && classK1 == chunklets(idx1))
 			%ML constraint being violated
 			penalty = (1-pdfs(idx2, k1)) + (1-pdfs(idx1, k2));
-		elseif typeCon == -1 && classK1 == classK2
+		elseif typeCon == -1 && ...
+				~(classK1 ~= classK2 && classK1 == chunklets(idx1) && classK2 == chunklets(idx2))
 			%CL constraind being violated
 			penalty = pdfs(idx1, k1) +  pdfs(idx2, k2);
 		end

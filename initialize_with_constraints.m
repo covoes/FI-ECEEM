@@ -8,8 +8,8 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 
 	Pfeas = [];
 	Pinfeas = [];
-	sizePopFeasible = configPrm.sizePopulation;
-	sizePopInfeasible = configPrm.sizePopulation;
+	sizePopFeasible = configPrm.sizePopulationFeasible;
+	sizePopInfeasible = configPrm.sizePopulationInfeasible;
 	opts = statset('MaxIter',configPrm.maxKMSIter);
 	nClusters = generate_nclusters(sizePopFeasible,configPrm);
 
@@ -26,8 +26,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 		seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster);
 		initMatrix = data(seeds,:);
 		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
-		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, sharedData, ...
-			                                               Pfeas, Pinfeas);
+		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, Pfeas, Pinfeas);
 	end
 
 	nTry = 0;
@@ -38,8 +37,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 		classOfCluster = randi([1 configPrm.minClusters], k) ;
 		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
 
-		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, sharedData, Pfeas, ...
-			                                               Pinfeas);
+		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, Pfeas, Pinfeas);
 	end
 
 	Pfeas = Pfeas(1:min(length(Pfeas),sizePopFeasible));
