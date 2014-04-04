@@ -145,10 +145,10 @@ end
 
 function testFIECEM
 	data = mvnrnd([repmat([3 3],300,1); repmat([20 20], 300, 1)], [1 1]);
-	constraints = [ 1 2 1; 5 90 1; 310 90 -1; 322 359 1];
+	constraints = [ 1 5 1; 5 90 1; 310 90 -1; 310 359 1];
 	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
 		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
-		'maxInitTries',10);
+		'maxInitTries',10, 'DEBUG',0 );
 	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
 	[~,idx] = min(pdist2(bestPartition.mean,[3 3; 20 20]),[],2);
 	mCorreta = [ 3 3; 20 20];

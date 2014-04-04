@@ -13,6 +13,7 @@ function	[indiv] = create_cluster(indiv, idxObj, data, chunklets, oldClusters)
 	indiv.mixCoef(oldClusters(idxObj)) = indiv.mixCoef(oldClusters(idxObj))/2;
 	indiv.classOfCluster(nClusters+1,:) = pickClass(idxObj, data, chunklets);
 
+	assert (isequal(sort(unique(indiv.classOfCluster(:)))', 1:max(chunklets)))
 end
 
 function [closestClass] = pickClass(idxObj, data, chunklets)

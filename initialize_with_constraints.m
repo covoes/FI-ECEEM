@@ -26,17 +26,23 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 		seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster);
 		initMatrix = data(seeds,:);
 		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
+		assert (isequal(sort(unique(individual.classOfCluster(:)))', 1:max(chunklets)))
 		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, Pfeas, Pinfeas);
 	end
 
 	nTry = 0;
+	nClasses = max(chunklets);
 	while length(Pinfeas) < sizePopInfeasible && configPrm.maxInitTries > nTry
 		nTry = nTry + 1;
 		k = nClusters(length(Pinfeas)+1);
 		initMatrix = data(randsample(size(data,1),k),:);
-		classOfCluster = randi([1 configPrm.minClusters], k) ;
+		classOfCluster = randsample(nClasses, nClasses);
+		if k > nClasses
+			classOfCluster(nClasses+1:k) = randi(nClasses, [1 k-nClasses]);
+		end	
 		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
 
+		assert (isequal(sort(unique(individual.classOfCluster(:)))', 1:max(chunklets)))
 		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, Pfeas, Pinfeas);
 	end
 
@@ -115,28 +121,28 @@ function nClusters = generate_nclusters(nIndividuals,cfg)
 end
 
 function unittests
-	testInitializeWithConstraints
 	testSpreadChunklets
 	testGenerateNClusters
 	testGmmFromKmeans
 	testSampleInitialSeedsOfChunklets
+	testInitializeWithConstraints
 end
 
 function testInitializeWithConstraints
-	data = [ 1 2; 1 3; 2 4; 5 5; 9 10; 10 11; 12 12];
+	data = [ 1.1 2; 1.2 3; 2 2; 5.1 5.2; 9 10; 10 11; 21.1 22.4];
 	con = [1 3 1;3 5 -1; 4 6 -1; 5 6 1];
 	conHard = generate_constraint_graph(con, size(data,1));
 	configPrm = struct('minClusters',2,'maxClusters',4, 'maxKMSIter',3, ...
-		                 'sizePopulation', 4,...
-	                   'maxInitTries', 10, 'DEBUG',0);
+		                 'sizePopulationFeasible', 4, 'sizePopulationInfeasible',4,...
+	                   'maxInitTries', 10, 'DEBUG',0,'regV', 5);
 
 	rng(42);
 	[nChunklets chunklets] = generate_chunklets(conHard);
 	shared = struct('data', data, 'constraints', con,'chunklets', chunklets,...
 	               	'nChunklets', nChunklets, 'conGraph', conHard);
 	[outFeas outInfeas] = initialize_with_constraints(shared, configPrm);
-	assertEqual(length(outFeas), configPrm.sizePopulation)
-	assertEqual(length(outInfeas), configPrm.sizePopulation)
+	assertEqual(length(outFeas), configPrm.sizePopulationFeasible)
+	assertEqual(length(outInfeas), configPrm.sizePopulationInfeasible)
 	assertTrue(all([outFeas(:).nClusters] >= configPrm.minClusters),'Numero de clusters invalido')
   assertTrue(all([outFeas(:).nClusters] <= configPrm.maxClusters),'Numero de clusters invalido')
 	assertTrue(all([outInfeas(:).nClusters] >= configPrm.minClusters),'Numero de clusters invalido')

@@ -15,6 +15,7 @@ end
 
 data = sharedData.data;
 constraints = sharedData.constraints;
+chunklets = sharedData.chunklets;
 
 [nObjects nFeatures] = size(data);
 
@@ -66,12 +67,13 @@ gmmObj = gera_struct_gmm_obj() ;
 
 
 function [gmmObj] = gera_struct_gmm_obj
-	[idx,nlogl,post,logpdf,mahalad] = cluster(objEM, data);
 	pdf = zeros(size(data,1), objEM.NComponents);
 	for kk=1:objEM.NComponents
+		%[T,P]=cholcov(objEM.Sigma(:,:,kk),0)
 		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),objEM.Sigma(:,:,kk));
 	end
-  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, data, constraints, post);
+	[idx,nlogl,post,logpdf,mahalad] = cluster(objEM, data);
+  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, chunklets, post);
 	gmmObj = struct('modelo', objEM, 'posterior', post, 'pdf', pdf, ...
 		              'clusterLabels', idx, 'classLabels', indiv.classOfCluster(idx), ...
 		              'isFeasible', ~isInfeasible, 'penalties', penaltyByCon);
