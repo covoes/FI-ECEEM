@@ -140,10 +140,11 @@ end
 end
 
 function unittests
-	testFIECEM;
+	testFIECEM_simples;
+	testFIECEM_medio;
 end
 
-function testFIECEM
+function testFIECEM_simples
 	data = mvnrnd([repmat([3 3],300,1); repmat([20 20], 300, 1)], [1 1]);
 	constraints = [ 1 5 1; 5 90 1; 310 90 -1; 310 359 1];
 	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
@@ -152,5 +153,31 @@ function testFIECEM
 	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
 	[~,idx] = min(pdist2(bestPartition.mean,[3 3; 20 20]),[],2);
 	mCorreta = [ 3 3; 20 20];
-	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.5)
+	cCorreta = [ 1 0 1; 1 0 1];
+	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.2)
+	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.2)
+	assertElementsAlmostEqual(bestPartition.mixCoef, [0.5 0.5], 'absolute',0.00001)
+	assertTrue(isequal(bestPartition.classOfCluster(idx), [1;2]))
+end
+
+
+function testFIECEM_medio
+	data = mvnrnd([repmat([3 3],300,1); ...
+								 repmat([3 20], 300, 1); ...
+	               repmat([20 20], 300, 1); ...
+		             repmat([20 3], 300, 1)], [1 1]);
+	constraints = [ 1 5 1; 5 90 1; 310 90 -1; 310 359 1; 610 810 1; 590 810 -1; ...
+		              990 1200 1; 1000 500 1; 1000 5 -1; 1200 610 -1; 590 90 -1; ...
+		              610 90 1; 310 1100 1];
+	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
+		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
+		'maxInitTries',10, 'DEBUG',0 );
+	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
+	[~,idx] = min(pdist2(bestPartition.mean,mCorreta),[],2);
+	mCorreta = [3 3; 3 20; 20 20; 20 3];
+	cCorreta = [ 1 0 1; 1 0 1; 1 0 1; 1 0 1];
+	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.2)
+	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.2)
+	assertElementsAlmostEqual(bestPartition.mixCoef, [0.25 0.25 0.25 0.25], 'absolute',0.00001)
+	assertTrue(isequal(sort(bestPartition.classOfCluster(idx)), [1;2;1;2]))
 end
