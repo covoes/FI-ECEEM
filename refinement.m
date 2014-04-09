@@ -39,6 +39,7 @@ try
 		'Start', struct( 'mu', means, 'Sigma', covs, 'PComponents', mixingCoefficients ), ...
 		'Options', statOpts, 'Regularize', cfgPrm.regV);
 catch err
+	err
 	if DEBUG
 		fprintf(DEBUG,'\nProblem with refinement, keeping old solution.\n%s\n',info_individual(indiv))
 	end

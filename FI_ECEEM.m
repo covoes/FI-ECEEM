@@ -1,7 +1,7 @@
 function [bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPrm)
 %Feasible-Infeasible - Evolutionary Create & Eliminate EM algorithm
 %
-%%TODO refazer doc usando configPRM
+%%TODO refazer doc usando configPrm
 %
 %Parameters:
 %data              : dataset to be clustered NxM where N is the number of objects and M the number of features
@@ -40,7 +40,7 @@ tolerance = 1e-5;
 
 nonOptPrms = {'maxClusters', 'sizePopulation', 'maxKMSIter', 'maxClusters', ...
 	                'sizePopulation',	'maxGenerations', 'maxGenWOImprov', 'maxEMIter',...
-                  'fitnessFName', 'maxKMSIter', 'minSizePop'};
+                  'fitnessFName', 'maxKMSIter', 'minSizePop','regV'};
 for f=nonOptPrms
 	if ~isfield(configPrm,cell2mat(f))
 		error('Field %s is missing from configPrm', cell2mat(f))
@@ -97,8 +97,8 @@ for g=1:configPrm.maxGenerations
 	[feasiblePool infeasiblePool] = ...
 			fill_pools_if_needed(staticSharedData, feasiblePool, infeasiblePool, configPrm);
 
-	Pfeas = feasiblePool(1:configPrm.sizePopulation);
-	Pinfeas = infeasiblePool(1:configPrm.sizePopulation);
+	Pfeas = feasiblePool(1:min(configPrm.sizePopulation, length(feasiblePool)));
+	Pinfeas = infeasiblePool(1:min(configPrm.sizePopulation,length(infeasiblePool)));
 
 	if converged()
 		return
@@ -121,11 +121,12 @@ tFinal = toc(tIni);
 function converg = converged
 	[curBestFitness idx] = min([ Pfeas(:).fitness ]);
 	bestPartition = Pfeas(idx);
-
+	converg = 0;
+	curBestFitness
 	%test termination criterion
 	if abs(lastBestFitness - curBestFitness) < tolerance
 		genWOImprov = genWOImprov + 1;
-		if genWOImprov == maxGenWOImprov
+		if genWOImprov == configPrm.maxGenWOImprov
 			%no improvements in maxGenWOImprov iterations exit returning
 			%the current best partition
 			tFinal=toc(tIni);
@@ -140,8 +141,8 @@ end
 end
 
 function unittests
-	testFIECEM_simples;
 	testFIECEM_medio;
+	testFIECEM_simples;
 end
 
 function testFIECEM_simples
@@ -149,7 +150,7 @@ function testFIECEM_simples
 	constraints = [ 1 5 1; 5 90 1; 310 90 -1; 310 359 1];
 	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
 		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
-		'maxInitTries',10, 'DEBUG',0 );
+		'maxInitTries',10, 'DEBUG',0, 'regV', 1e-2 );
 	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
 	[~,idx] = min(pdist2(bestPartition.mean,[3 3; 20 20]),[],2);
 	mCorreta = [ 3 3; 20 20];
@@ -168,16 +169,19 @@ function testFIECEM_medio
 		             repmat([20 3], 300, 1)], [1 1]);
 	constraints = [ 1 5 1; 5 90 1; 310 90 -1; 310 359 1; 610 810 1; 590 810 -1; ...
 		              990 1200 1; 1000 500 1; 1000 5 -1; 1200 610 -1; 590 90 -1; ...
-		              610 90 1; 310 1100 1];
-	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
+		              610 90 1; 310 1100 1; 500 310 1; 990 1000 1];
+	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',10,...
 		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
-		'maxInitTries',10, 'DEBUG',0 );
+		'maxInitTries',10, 'DEBUG',0, 'regV', 1e-5 );
 	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
-	[~,idx] = min(pdist2(bestPartition.mean,mCorreta),[],2);
+	info_individual(bestPartition)
+	assertTrue(bestPartition.nClusters == 4,'Wrong number of clusters')
 	mCorreta = [3 3; 3 20; 20 20; 20 3];
 	cCorreta = [ 1 0 1; 1 0 1; 1 0 1; 1 0 1];
+	cClCorreta = [1;2;1;2];
+	[~,idx] = min(pdist2(bestPartition.mean,mCorreta),[],2);
 	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.2)
-	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.2)
+	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.5)
 	assertElementsAlmostEqual(bestPartition.mixCoef, [0.25 0.25 0.25 0.25], 'absolute',0.00001)
-	assertTrue(isequal(sort(bestPartition.classOfCluster(idx)), [1;2;1;2]))
+	assertTrue(isequal(bestPartition.classOfCluster, cClCorreta(idx)))
 end

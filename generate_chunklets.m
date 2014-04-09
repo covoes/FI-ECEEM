@@ -30,5 +30,10 @@ function testGenerateChunklets
 	[outNchunk chunklets] = generate_chunklets(graph);
 	assertEqual(outNchunk, 2)
 	assertEqual(chunklets, [1 0 1 0 0 2 2])
+
+	graph = generate_constraint_graph([1 3 1; 6 7 1; 3 2 1], 7);
+	[outNchunk chunklets] = generate_chunklets(graph);
+	assertEqual(outNchunk, 2)
+	assertEqual(chunklets, [1 1 1 0 0 2 2])
 end
 

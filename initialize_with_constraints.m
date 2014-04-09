@@ -10,7 +10,6 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	Pinfeas = [];
 	sizePopFeasible = configPrm.sizePopulationFeasible;
 	sizePopInfeasible = configPrm.sizePopulationInfeasible;
-	opts = statset('MaxIter',configPrm.maxKMSIter);
 	nClusters = generate_nclusters(sizePopFeasible,configPrm);
 
 	data = sharedData.data;
@@ -25,7 +24,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 		classOfCluster = spread_chunklets_among_clusters(nChunklets, k);
 		seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster);
 		initMatrix = data(seeds,:);
-		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
+		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, configPrm, classOfCluster);
 		assert (isequal(sort(unique(individual.classOfCluster(:)))', 1:max(chunklets)))
 		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, Pfeas, Pinfeas);
 	end
@@ -40,7 +39,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 		if k > nClasses
 			classOfCluster(nClasses+1:k) = randi(nClasses, [1 k-nClasses]);
 		end	
-		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, opts, classOfCluster);
+		[individual,gmmObj] = initialize_gmm(sharedData, k, initMatrix, configPrm, classOfCluster);
 
 		assert (isequal(sort(unique(individual.classOfCluster(:)))', 1:max(chunklets)))
 		[Pfeas Pinfeas] = insert_individual_correct_pool(individual,gmmObj, Pfeas, Pinfeas);
@@ -50,16 +49,17 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	Pinfeas = Pinfeas(1:min(length(Pinfeas),sizePopInfeasible));
 end
 
-function [individual,gmmObj] = initialize_gmm(sharedData, k, init, opts, classOfCluster)
+function [individual,gmmObj] = initialize_gmm(sharedData, k, init,configPrm, classOfCluster)
+	opts = statset('MaxIter',configPrm.maxKMSIter);
 	[idx, clusters] = kmeans(sharedData.data, k, 'EmptyAction', 'singleton',...
 	                       	'Start', init, 'Options', opts);
 	individual = gmmFromKmeans(idx, clusters, sharedData.data);
 	individual.classOfCluster = classOfCluster;
-	[individual,gmmObj] = one_em_step(individual, sharedData);
+	[individual,gmmObj] = one_em_step(individual, sharedData, configPrm);
 end
 
-function [individual,gmmObj] = one_em_step(individual, sharedData)
-	[individual,gmmObj] = refinement(individual, sharedData, struct('maxEMIter',1));
+function [individual,gmmObj] = one_em_step(individual, sharedData, configPrm)
+	[individual,gmmObj] = refinement(individual, sharedData, configPrm);
 end
 
 function seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster)
@@ -134,7 +134,8 @@ function testInitializeWithConstraints
 	conHard = generate_constraint_graph(con, size(data,1));
 	configPrm = struct('minClusters',2,'maxClusters',4, 'maxKMSIter',3, ...
 		                 'sizePopulationFeasible', 4, 'sizePopulationInfeasible',4,...
-	                   'maxInitTries', 10, 'DEBUG',0,'regV', 5);
+	                   'maxInitTries', 10, 'DEBUG',0,'regV', 1e-2, ...
+		                 'maxEMIter', 2, 'fitnessFName', 'mdl');
 
 	rng(42);
 	[nChunklets chunklets] = generate_chunklets(conHard);
