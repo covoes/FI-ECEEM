@@ -119,6 +119,7 @@ end
 tFinal = toc(tIni);
 
 function converg = converged
+	Pfeas
 	[curBestFitness idx] = min([ Pfeas(:).fitness ]);
 	bestPartition = Pfeas(idx);
 	converg = 0;
@@ -141,11 +142,13 @@ end
 end
 
 function unittests
-	testFIECEM_medio;
-	testFIECEM_simples;
+	testFIECEM_BestSolutionInfeasible;
+	return
+	testFIECEM_BestSolutionFeasibleOneMapping;
+	testFIECEM_BestSolutionFeasibleMultipleMappings;
 end
 
-function testFIECEM_simples
+function testFIECEM_BestSolutionFeasibleOneMapping
 	data = mvnrnd([repmat([3 3],300,1); repmat([20 20], 300, 1)], [1 1]);
 	constraints = [ 1 5 1; 5 90 1; 310 90 -1; 310 359 1];
 	configPRM = struct('maxKMSIter',2,'maxClusters',5, 'sizePopulation',5, 'maxGenerations',5,...
@@ -162,7 +165,7 @@ function testFIECEM_simples
 end
 
 
-function testFIECEM_medio
+function testFIECEM_BestSolutionFeasibleMultipleMappings
 	data = mvnrnd([repmat([3 3],300,1); ...
 								 repmat([3 20], 300, 1); ...
 	               repmat([20 20], 300, 1); ...
@@ -183,5 +186,43 @@ function testFIECEM_medio
 	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.2)
 	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.5)
 	assertElementsAlmostEqual(bestPartition.mixCoef, [0.25 0.25 0.25 0.25], 'absolute',0.00001)
+	assertTrue(isequal(bestPartition.classOfCluster, cClCorreta(idx)))
+end
+
+
+
+function testFIECEM_BestSolutionInfeasible
+	data = [mvnrnd(repmat([3 3], 1000,1), [0.01 0; 0 0.75]); ...
+	        mvnrnd(repmat([4 3], 1000,1), [0.02 0; 0 0.85])];
+	c1 = find(data(:,2) > 3);
+	c2 = find(data(:,2) <= 3);
+	%hold all;
+	%plot(data(c1,1), data(c1,2), '.b')
+	%plot(data(c2,1), data(c2,2), '*r')
+	conC1 = randsample(c1, 100);
+	conC2 = randsample(c2, 100);
+	%plot(data(conC1,1), data(conC1,2), '.b')
+	%plot(data(conC2,1), data(conC2,2), '*r')
+	constraints = zeros([1000 3]);
+	idx = 1;
+	for i=1:99
+		constraints((idx:idx+2),:) = [ conC1(i) conC2(i) -1; ...
+			                     conC1(i) conC1(i+1) 1; ...
+			                     conC2(i) conC2(i+1) 1];
+		idx = idx + 3;
+	end
+	configPRM = struct('maxKMSIter',2,'maxClusters',200, 'sizePopulation',5, 'maxGenerations',10,...
+		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
+		'maxInitTries',100, 'DEBUG',0, 'regV', 1e-5 );
+	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
+	info_individual(bestPartition)
+	assertTrue(bestPartition.nClusters == 2,'Wrong number of clusters')
+	mCorreta = [3.5 3.5; 3.5 2.5];
+	cCorreta = [ 1 0 1; 1 0 1; 1 0 1; 1 0 1];
+	cClCorreta = [1;2];
+	[~,idx] = min(pdist2(bestPartition.mean,mCorreta),[],2);
+	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.2)
+	assertElementsAlmostEqual(bestPartition.mixCoef, [0.5 0.5], 'absolute',0.00001)
+	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.5)
 	assertTrue(isequal(bestPartition.classOfCluster, cClCorreta(idx)))
 end

@@ -19,7 +19,8 @@ chunklets = sharedData.chunklets;
 
 [nObjects nFeatures] = size(data);
 
-[nClusters means covs mixingCoefficients objEM] = gmm_parameters_from_individual(indiv, nFeatures);
+[nClusters means covs mixingCoefficients objEM] = ...
+           gmm_parameters_from_individual(indiv, nFeatures, cfgPrm.regV);
 
 if doNotRunEM
 	gmmObj = gera_struct_gmm_obj() ;
@@ -71,7 +72,8 @@ function [gmmObj] = gera_struct_gmm_obj
 	pdf = zeros(size(data,1), objEM.NComponents);
 	for kk=1:objEM.NComponents
 		%[T,P]=cholcov(objEM.Sigma(:,:,kk),0)
-		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),objEM.Sigma(:,:,kk));
+		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),...
+			                 objEM.Sigma(:,:,kk)+eye(size(data,2))*cfgPrm.regV);
 	end
 	[idx,nlogl,post,logpdf,mahalad] = cluster(objEM, data);
   [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, chunklets, post);
@@ -85,14 +87,14 @@ end
 
 
 function [nClusters means covs mixingCoefficients,objEM] = ...
-	                             	gmm_parameters_from_individual(indiv,nFeatures)
+	                      gmm_parameters_from_individual(indiv,nFeatures,regV)
 	nClusters = indiv.nClusters;
 	covs = zeros( nFeatures, nFeatures, nClusters );
 	means = indiv.mean(1:nClusters,:);
 
 	%create gmdistribution
 	for k=1:nClusters
-		covs(:,:,k) = squareformSymmetric( indiv.covariance(k,:) );
+		covs(:,:,k) = squareformSymmetric( indiv.covariance(k,:) ) + eye(nFeatures)*regV;
 	end
 	mixingCoefficients = indiv.mixCoef(1:nClusters);
 	objEM = gmdistribution(means,covs,mixingCoefficients);
