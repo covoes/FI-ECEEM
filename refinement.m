@@ -33,7 +33,6 @@ if DEBUG
 	fprintf(DEBUG,'#REFINEMENT\nOLD INDIVIDUAL :%s\n',info_individual(indiv));
 end
 
-
 %if we find a problem with ill conditioned covariance matrices, restart a new solution
 try
 	objEM = gmdistribution.fit(data, nClusters, ...

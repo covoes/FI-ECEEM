@@ -2,8 +2,9 @@ function [feasiblePool infeasiblePool] = fill_pools_if_needed(sharedData, ...
 		feasiblePool, infeasiblePool,	configPrm)
 %SORT_AND_FILL_POOLS_IF_NEEDED Makes sure that each pool has minSizePop individuals
 
-infIndivToGenerate = configPrm.minSizePop - length(infeasiblePool);
-feasIndivToGenerate = configPrm.minSizePop - length(feasiblePool); 
+
+infIndivToGenerate = max(0,configPrm.minSizePop - length(infeasiblePool));
+feasIndivToGenerate = max(0,configPrm.minSizePop - length(feasiblePool)); 
 
 configPrm.sizePopulationFeasible = feasIndivToGenerate;
 configPrm.sizePopulationInfeasible = infIndivToGenerate;

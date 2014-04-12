@@ -1,4 +1,4 @@
-function [bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPrm)
+function [bestPartition EMSteps tFinal g gmmObj] = FI_ECEEM(data, constraints, configPrm)
 %Feasible-Infeasible - Evolutionary Create & Eliminate EM algorithm
 %
 %%TODO refazer doc usando configPrm
@@ -67,6 +67,10 @@ for g=1:configPrm.maxGenerations
 	newInfeasibleSolutions = [];
 	for i=1:length(Pfeas)
 		indiv = Pfeas(i);
+		if indiv.nClusters > 2
+			[indiv, gmmObj] = refinement(indiv, staticSharedData, configPrm, 1);
+			indiv = remove_empty_clusters(indiv, gmmObj);
+		end
 
 		[indiv,gmmObj] = refinement(indiv, staticSharedData, configPrm);
 		[feas infeas] = insert_individual_correct_pool(indiv, gmmObj, [], []);
@@ -132,6 +136,10 @@ function converg = converged
 			%the current best partition
 			tFinal=toc(tIni);
 			converg = 1;
+			[bestPartition,gmmObj] = refinement(bestPartition, staticSharedData, configPrm, 1);
+			bestPartition = remove_empty_clusters(bestPartition, gmmObj);
+			[bestPartition,gmmObj] = refinement(bestPartition, staticSharedData, configPrm, 1);
+
 		end
 	else
 		genWOImprov = 0;
@@ -143,7 +151,6 @@ end
 
 function unittests
 	testFIECEM_BestSolutionInfeasible;
-	return
 	testFIECEM_BestSolutionFeasibleOneMapping;
 	testFIECEM_BestSolutionFeasibleMultipleMappings;
 end
@@ -192,37 +199,60 @@ end
 
 
 function testFIECEM_BestSolutionInfeasible
-	data = [mvnrnd(repmat([3 3], 1000,1), [0.01 0; 0 0.75]); ...
-	        mvnrnd(repmat([4 3], 1000,1), [0.02 0; 0 0.85])];
+	data = [mvnrnd(repmat([3 3], 500,1), [0.01 0; 0 0.75]); ...
+	        mvnrnd(repmat([5 3], 500,1), [0.02 0; 0 0.85])];
+	data2 = mvnrnd(repmat([4 3], 500,1), [0.02 0; 0 0.85]);
 	c1 = find(data(:,2) > 3);
 	c2 = find(data(:,2) <= 3);
-	%hold all;
-	%plot(data(c1,1), data(c1,2), '.b')
-	%plot(data(c2,1), data(c2,2), '*r')
-	conC1 = randsample(c1, 100);
-	conC2 = randsample(c2, 100);
-	%plot(data(conC1,1), data(conC1,2), '.b')
-	%plot(data(conC2,1), data(conC2,2), '*r')
-	constraints = zeros([1000 3]);
+	data = [data;data2];
+	c3 = 1001:1050;
+	hold all;
+	plot(data(c1,1), data(c1,2), '.b')
+	plot(data(c2,1), data(c2,2), '.r')
+	plot(data(c3,1), data(c3,2), '.g')
+	nConSamples = 50;
+	conC1 = randsample(c1, nConSamples);
+	conC2 = randsample(c2, nConSamples);
+	conC3 = randsample(c3, nConSamples);
+	plot(data(conC1,1), data(conC1,2), 'sb', 'MarkerSize', 12)
+	plot(data(conC2,1), data(conC2,2), '*r', 'MarkerSize', 12)
+	plot(data(conC3,1), data(conC3,2), 'hm', 'MarkerSize', 12)
+	constraints = zeros([nConSamples*3 3]);
 	idx = 1;
-	for i=1:99
-		constraints((idx:idx+2),:) = [ conC1(i) conC2(i) -1; ...
-			                     conC1(i) conC1(i+1) 1; ...
-			                     conC2(i) conC2(i+1) 1];
-		idx = idx + 3;
+	for i=1:(nConSamples-1)
+		constraints((idx:idx+5),:) = [ conC1(i) conC2(i) -1; ...
+                                   conC1(i) conC3(i) -1; ...
+                                   conC2(i) conC3(i) -1; ...
+ 			                             conC1(i) conC1(i+1) 1; ...
+			                             conC2(i) conC2(i+1) 1; ...
+			                             conC3(i) conC3(i+1) 1];
+		idx = idx + 6;
 	end
-	configPRM = struct('maxKMSIter',2,'maxClusters',200, 'sizePopulation',5, 'maxGenerations',10,...
-		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',2,...
-		'maxInitTries',100, 'DEBUG',0, 'regV', 1e-5 );
-	[bestPartition EMSteps tFinal g] = FI_ECEEM(data, constraints, configPRM);
+	configPRM = struct('maxKMSIter',2,'maxClusters',100, 'sizePopulation',5, 'maxGenerations',10,...
+		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',5,...
+		'maxInitTries',400, 'DEBUG',0, 'regV', 1e-5 );
+	[bestPartition EMSteps tFinal gi gmmObj] = FI_ECEEM(data, constraints, configPRM);
+	for k=1:bestPartition.nClusters
+		sprintf('%d - %d\n',k, sum(gmmObj.clusterLabels==k))
+	end
 	info_individual(bestPartition)
+	plot(bestPartition.mean(bestPartition.classOfCluster == 1, 1),...
+		   bestPartition.mean(bestPartition.classOfCluster == 1, 2), '>b', 'MarkerSize', 16)
+
+	plot(bestPartition.mean(bestPartition.classOfCluster == 2, 1),...
+		   bestPartition.mean(bestPartition.classOfCluster == 2, 2), '<k', 'MarkerSize', 16)
+
+	plot(bestPartition.mean(bestPartition.classOfCluster == 3, 1),...
+		   bestPartition.mean(bestPartition.classOfCluster == 3, 2), 'vg', 'MarkerSize', 16)
+	assertTrue(bestPartition.nClusters == 2,'Wrong number of clusters')
+
 	assertTrue(bestPartition.nClusters == 2,'Wrong number of clusters')
 	mCorreta = [3.5 3.5; 3.5 2.5];
 	cCorreta = [ 1 0 1; 1 0 1; 1 0 1; 1 0 1];
 	cClCorreta = [1;2];
 	[~,idx] = min(pdist2(bestPartition.mean,mCorreta),[],2);
 	assertElementsAlmostEqual(bestPartition.mean, mCorreta(idx,:), 'absolute',0.2)
-	assertElementsAlmostEqual(bestPartition.mixCoef, [0.5 0.5], 'absolute',0.00001)
+	assertElementsAlmostEqual(bestPartition.mixCoef, [length(c1)/2000 length(c2)/2000], 'absolute',0.05)
 	assertElementsAlmostEqual(bestPartition.covariance, cCorreta(idx,:), 'absolute',0.5)
 	assertTrue(isequal(bestPartition.classOfCluster, cClCorreta(idx)))
 end

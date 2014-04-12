@@ -8,9 +8,9 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 
 	Pfeas = [];
 	Pinfeas = [];
-	sizePopFeasible = configPrm.sizePopulationFeasible;
+	sizePopFeasible = configPrm.sizePopulationFeasible
 	sizePopInfeasible = configPrm.sizePopulationInfeasible;
-	nClusters = generate_nclusters(sizePopFeasible,configPrm);
+	nClusters = generate_nclusters(sizePopFeasible,configPrm)
 
 	data = sharedData.data;
 	nChunklets = sharedData.nChunklets;
@@ -20,7 +20,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	nTry = 0;
 	while length(Pfeas) < sizePopFeasible && configPrm.maxInitTries > nTry
 		nTry = nTry + 1;
-		k = nClusters(length(Pfeas)+1);
+		k = nClusters(mod(nTry,sizePopFeasible)+1);
 		classOfCluster = spread_chunklets_among_clusters(nChunklets, k);
 		seeds = sample_initial_seeds_off_chunklets(chunklets, classOfCluster);
 		initMatrix = data(seeds,:);
@@ -33,7 +33,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	nClasses = max(chunklets);
 	while length(Pinfeas) < sizePopInfeasible && configPrm.maxInitTries > nTry
 		nTry = nTry + 1;
-		k = nClusters(length(Pinfeas)+1);
+		k = nClusters(mod(nTry,length(nClusters))+1);
 		initMatrix = data(randsample(size(data,1),k),:);
 		classOfCluster = randsample(nClasses, nClasses);
 		if k > nClasses

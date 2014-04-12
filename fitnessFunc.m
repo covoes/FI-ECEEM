@@ -13,6 +13,8 @@ switch( lower(FName) )
 		     + numClusters * numFeatures * (numFeatures+1)/2)/2 ... %covariance matrix
 			 * log(numObjects); %data
 		fitness = GMDistObj.NlogL + penalMDL;
+		%sprintf('%.5f == %.5f\n', fitness*2, GMDistObj.BIC)
+		fitness = GMDistObj.BIC;
 
 	%Criterion defined in TPAMI02_Figueiredo 
 	case 'fig'
