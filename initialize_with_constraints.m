@@ -8,9 +8,9 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 
 	Pfeas = [];
 	Pinfeas = [];
-	sizePopFeasible = configPrm.sizePopulationFeasible
+	sizePopFeasible = configPrm.sizePopulationFeasible;
 	sizePopInfeasible = configPrm.sizePopulationInfeasible;
-	nClusters = generate_nclusters(sizePopFeasible,configPrm)
+	nClusters = generate_nclusters(sizePopFeasible,configPrm);
 
 	data = sharedData.data;
 	nChunklets = sharedData.nChunklets;

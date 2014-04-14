@@ -23,9 +23,6 @@ end
 
 global EMSteps;
 
-EXTRA_INFO=0;
-%EXTRA_INFO='extraInfo.mat';
-
 
 if ~isfield(configPrm,'DEBUG')
 	configPrm.DEBUG=0;
@@ -84,6 +81,8 @@ for g=1:configPrm.maxGenerations
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 	end
 
+	fprintf('%d - After FeasProc - %d feasPool %d infeasPool\n',g,length(newFeasibleSolutions),...
+	          	length(newInfeasibleSolutions));
 	for i=1:length(Pinfeas)
 		indiv = Pinfeas(i);
 		[indiv, gmmObj] = refinement(indiv, staticSharedData, configPrm, 1);
@@ -94,6 +93,9 @@ for g=1:configPrm.maxGenerations
 		newInfeasibleSolutions = [newInfeasibleSolutions; infeas];
 	end
 
+
+	fprintf('%d - After InfeasProc - %d feasPool %d infeasPool\n',g,length(newFeasibleSolutions),...
+	          	length(newInfeasibleSolutions));
 	feasiblePool = fitness_based_selection(Pfeas, newFeasibleSolutions);
 
 	infeasiblePool = constraint_based_selection(Pinfeas, newInfeasibleSolutions);
@@ -104,18 +106,19 @@ for g=1:configPrm.maxGenerations
 	Pfeas = feasiblePool(1:min(configPrm.sizePopulation, length(feasiblePool)));
 	Pinfeas = infeasiblePool(1:min(configPrm.sizePopulation,length(infeasiblePool)));
 
-	if converged()
-		return
-	end
-
 
 	%fprintf('\n-%.2f (%.2f)\n',mean([ P(:).nClusters ]), std([P(:).nClusters]))
-	if EXTRA_INFO
+	if configPrm.EXTRA_INFO
 		INFO_FIT(g,:) = [ Pfeas(:).fitness ];
 		INFO_K(g,:) = [ Pfeas(:).nClusters ];
 		INFO_FIT2(g,:) = [ Pinfeas(:).fitness ];
 		INFO_K2(g,:) = [ Pinfeas(:).nClusters ];
-		save(EXTRA_INFO, 'INFO_FIT', 'INFO_K', 'INFO_FIT2', 'INFO_K2');
+		%save(EXTRA_INFO, 'INFO_FIT', 'INFO_K', 'INFO_FIT2', 'INFO_K2');
+	end
+
+
+	if converged()
+		return
 	end
 
 end
@@ -123,11 +126,17 @@ end
 tFinal = toc(tIni);
 
 function converg = converged
-	Pfeas
-	[curBestFitness idx] = min([ Pfeas(:).fitness ]);
-	bestPartition = Pfeas(idx);
+
 	converg = 0;
-	curBestFitness
+	if length(Pfeas) == 0
+		return
+	end
+
+	
+	[curBestFitness idx] = min([ Pfeas(:).fitness ]);
+	fprintf('%d -- MDL -- bst %.5f -- mean %.5f\n',g,curBestFitness, mean([Pfeas(:).fitness]));
+	fprintf('%d -- VIO -- bst %.5f -- mean %.5f\n',g,min([Pinfeas(:).totPenalty]), mean([Pinfeas(:).totPenalty]));
+	bestPartition = Pfeas(idx);
 	%test termination criterion
 	if abs(lastBestFitness - curBestFitness) < tolerance
 		genWOImprov = genWOImprov + 1;
@@ -139,7 +148,8 @@ function converg = converged
 			[bestPartition,gmmObj] = refinement(bestPartition, staticSharedData, configPrm, 1);
 			bestPartition = remove_empty_clusters(bestPartition, gmmObj);
 			[bestPartition,gmmObj] = refinement(bestPartition, staticSharedData, configPrm, 1);
-
+		
+			plot(mean(INFO_FIT, 1), '-b')
 		end
 	else
 		genWOImprov = 0;
@@ -210,7 +220,7 @@ function testFIECEM_BestSolutionInfeasible
 	plot(data(c1,1), data(c1,2), '.b')
 	plot(data(c2,1), data(c2,2), '.r')
 	plot(data(c3,1), data(c3,2), '.g')
-	nConSamples = 50;
+	nConSamples = 20;
 	conC1 = randsample(c1, nConSamples);
 	conC2 = randsample(c2, nConSamples);
 	conC3 = randsample(c3, nConSamples);
@@ -228,9 +238,9 @@ function testFIECEM_BestSolutionInfeasible
 			                             conC3(i) conC3(i+1) 1];
 		idx = idx + 6;
 	end
-	configPRM = struct('maxKMSIter',2,'maxClusters',100, 'sizePopulation',5, 'maxGenerations',10,...
-		'maxGenWOImprov',2,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',5,...
-		'maxInitTries',400, 'DEBUG',0, 'regV', 1e-5 );
+	configPRM = struct('maxKMSIter',2,'maxClusters',20, 'sizePopulation',10, 'maxGenerations',20,...
+		'maxGenWOImprov',20,'maxEMIter',3,'fitnessFName','mdl','minSizePop',2,'minClusters',3,...
+		'maxInitTries',400, 'DEBUG',0, 'regV', 1e-5, 'EXTRA_INFO', 0 );
 	[bestPartition EMSteps tFinal gi gmmObj] = FI_ECEEM(data, constraints, configPRM);
 	for k=1:bestPartition.nClusters
 		sprintf('%d - %d\n',k, sum(gmmObj.clusterLabels==k))
