@@ -23,10 +23,9 @@ function [closestClass] = pickClass(idxObj, data, chunklets)
 		labeled = data(chunklets>0,:);
 		classes = chunklets(chunklets>0);
 		dists = pdist2(data(idxObj,:), labeled, 'euclidean');
-		dists = max(dists)-dists;
-		dists = dists/sum(dists);
-		chosen = roulette(dists, 1);
-		closestClass = classes(chosen);
+		%select class of the closest labeled object
+		[~,closestLabeled] = min(dists);
+		closestClass = classes(closestLabeled);
 	end
 end
 
