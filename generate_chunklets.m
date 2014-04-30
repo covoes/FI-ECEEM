@@ -22,7 +22,7 @@ function [nChunklets outChunklets] = generate_chunklets(conGraph)
 end
 
 function unittests
-	testGenerateChunklets
+	testGenerateChunklets;
 end
 
 function testGenerateChunklets

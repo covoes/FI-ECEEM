@@ -15,7 +15,6 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	data = sharedData.data;
 	nChunklets = sharedData.nChunklets;
 	chunklets = sharedData.chunklets;
-	conGraph = sharedData.conGraph;
 
 	nTry = 0;
 	while length(Pfeas) < sizePopFeasible && configPrm.maxInitTries > nTry
@@ -33,7 +32,7 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 	nClasses = max(chunklets);
 	while length(Pinfeas) < sizePopInfeasible && configPrm.maxInitTries > nTry
 		nTry = nTry + 1;
-		k = nClusters(mod(nTry,length(nClusters))+1);
+		k = nClusters(mod(nTry,sizePopFeasible)+1);
 		initMatrix = data(randsample(size(data,1),k),:);
 		classOfCluster = randsample(nClasses, nClasses);
 		if k > nClasses

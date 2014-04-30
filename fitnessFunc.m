@@ -1,4 +1,4 @@
-function [fitness] = fitnessFunc( FName, GMDistObj, numObjects, numClusters, numFeatures )
+function [fitness] = fitnessFunc( FName, NlogL, numObjects, numClusters, numFeatures )
 %Compute the fitness of a gmdistribution object.
 %
 %Possible values for FName are: 'mdl', 'fig','fig2'
@@ -12,22 +12,9 @@ switch( lower(FName) )
 			 + numClusters * numFeatures ... %means
 		     + numClusters * numFeatures * (numFeatures+1)/2)/2 ... %covariance matrix
 			 * log(numObjects); %data
-		fitness = GMDistObj.NlogL + penalMDL;
+		fitness = NlogL + penalMDL;
 		%sprintf('%.5f == %.5f\n', fitness*2, GMDistObj.BIC)
-		fitness = GMDistObj.BIC;
-
-	%Criterion defined in TPAMI02_Figueiredo 
-	case 'fig'
-		nparsover2 = (numFeatures + (numFeatures*(numFeatures+1)/2))/2;
-		penalFIG = (nparsover2*(sum(log(GMDistObj.PComponents)))) + ((nparsover2 + 0.5)*numClusters*log(numObjects)) + (numClusters*nparsover2)+(numClusters/2);
-		fitness = GMDistObj.NlogL + penalFIG;
-
-	%Criterion defined in TPAMI02_Figueiredo according to its implementation
-	case 'fig2'
-		nparsover2 = (numFeatures + (numFeatures*(numFeatures+1)/2))/2;
-		penalFIG = (nparsover2*(sum(log(GMDistObj.PComponents)))) + ((nparsover2 + 0.5)*numClusters*log(numObjects));
-		fitness = GMDistObj.NlogL + penalFIG;
-
+		%fitness = GMDistObj.BIC;
 
 	otherwise
 		error( 'Function %s not  implemented', FName );

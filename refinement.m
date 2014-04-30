@@ -14,7 +14,6 @@ if nargin < 4
 end
 
 data = sharedData.data;
-constraints = sharedData.constraints;
 chunklets = sharedData.chunklets;
 
 [nObjects nFeatures] = size(data);
@@ -22,8 +21,9 @@ chunklets = sharedData.chunklets;
 [nClusters means covs mixingCoefficients objEM] = ...
            gmm_parameters_from_individual(indiv, nFeatures, cfgPrm.regV);
 
+gmmObj = [];
 if doNotRunEM
-	gmmObj = gera_struct_gmm_obj() ;
+	update_parameters();
 	return
 end
 
@@ -38,48 +38,44 @@ try
 	objEM = gmdistribution.fit(data, nClusters, ...
 		'Start', struct( 'mu', means, 'Sigma', covs, 'PComponents', mixingCoefficients ), ...
 		'Options', statOpts, 'Regularize', cfgPrm.regV);
-catch err
-	err
+catch err 
 	if DEBUG
-		fprintf(DEBUG,'\nProblem with refinement, keeping old solution.\n%s\n',info_individual(indiv))
+		fprintf(DEBUG,'\nProblem with refinement, keeping old solution.\n%s\n',info_individual(indiv));
+		fprintf(DEBUG,err);
 	end
-	gmmObj = gera_struct_gmm_obj();
-	return
+%	gmmObj = update_parameters();
+%	return
 end
 
-%update individual parameters
-indiv.mean(1:nClusters,:) = objEM.mu;
-indiv.mixCoef(1:nClusters) = objEM.PComponents;
-indiv.fitness = fitnessFunc( cfgPrm.fitnessFName, objEM, nObjects, nClusters, nFeatures );
-covs = objEM.Sigma;
-for k=1:nClusters
-	indiv.covariance(k,:) = squareformSymmetric( covs(:,:,k) );
-%	indiv.determinant(k) = det( covs(:,:,k) );
-	%storing the squared mahalanobis distance
-%	dif = bsxfun(@minus, data, indiv.mean(k,:));
-%	indiv.distance(:,k) = sum((dif / covs(:,:,k)) .* dif,2);
-end
+
+update_parameters() ;
 
 if DEBUG
 	fprintf(DEBUG,'\nNEW INDIVIDUAL:%s\n', info_individual(indiv));
 end
 
-gmmObj = gera_struct_gmm_obj() ;
 
 
-function [gmmObj] = gera_struct_gmm_obj
-	pdf = zeros(size(data,1), objEM.NComponents);
-	for kk=1:objEM.NComponents
+function update_parameters
+	%update individual parameters
+	indiv.mean(1:nClusters,:) = objEM.mu;
+	indiv.mixCoef(1:nClusters) = objEM.PComponents;
+	covs = objEM.Sigma;
+	pdf = zeros(size(data,1), nClusters);
+	for k=1:nClusters
+		indiv.covariance(k,:) = squareformSymmetric( covs(:,:,k) );
 		%[T,P]=cholcov(objEM.Sigma(:,:,kk),0)
-		pdf(:,kk) = mvnpdf(data,objEM.mu(kk,:),...
-			                 objEM.Sigma(:,:,kk)+eye(size(data,2))*cfgPrm.regV);
+		pdf(:,k) = mvnpdf(data,indiv.mean(k,:),...
+			                 covs(:,:,k)+eye(size(data,2))*cfgPrm.regV);
 	end
-	[idx,nlogl,post,logpdf,mahalad] = cluster(objEM, data);
-  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, chunklets, post);
+
+	[idx,nlogl,post] = cluster(objEM, data);
+  [isInfeasible,totPenalty,penaltyByCon] = compute_penalty(indiv, chunklets, idx, post);
 	gmmObj = struct('modelo', objEM, 'posterior', post, 'pdf', pdf, ...
 		              'clusterLabels', idx, 'classLabels', indiv.classOfCluster(idx), ...
 		              'isFeasible', ~isInfeasible, 'penalties', penaltyByCon);
 	indiv.totPenalty = totPenalty;
+	indiv.fitness = fitnessFunc( cfgPrm.fitnessFName, nlogl, nObjects, nClusters, nFeatures );
 end
 
 end
