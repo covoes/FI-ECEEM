@@ -5,7 +5,7 @@ function [indiv,gmmObj] = feasible_mutation(indiv, gmmObj, sharedData, configPrm
 
 	nClusters = indiv.nClusters;
 
-	pElim = (nClusters-2)/(configPrm.maxClusters-2);
+	pElim = (nClusters-configPrm.minClusters)/(configPrm.maxClusters-configPrm.minClusters);
 	if (rand() > pElim)
 		mutOpToApply = 'create';
 	else
@@ -26,7 +26,7 @@ function [indiv,gmmObj] = feasible_mutation(indiv, gmmObj, sharedData, configPrm
 		if all(probs==0)
 			return
 		end	
-		z = randi([1 nClusters-2]);
+		z = randi([1 nClusters-configPrm.minClusters]);
 		%chosen are the clusters selected for removal
 		chosen = roulette_without_reposition( probs, z );
 		indiv = remove_clusters(chosen, indiv);

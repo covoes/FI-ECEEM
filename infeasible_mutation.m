@@ -19,11 +19,11 @@ elseif maxClustersToCreate == 1
 else
 	%maximum number of clusters reached
 	%chosen are the clusters selected for removal
-	chosen = randi(nClusters, [1 nClusters-2]);
+	chosen = randi(nClusters, [1 nClusters-configPrm.minClusters]);
 	indiv = remove_clusters(chosen, indiv);
 	return
 end
-chosen = roulette(penalties,objsToFix);
+chosen = roulette_without_reposition(penalties,objsToFix);
 
 clusterLabels = gmmObj.clusterLabels;
 for c=1:objsToFix

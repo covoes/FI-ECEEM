@@ -38,9 +38,8 @@ tIni = tic;
 %tolerance to consider no improvement in EM
 tolerance = 1e-5;
 
-nonOptPrms = {'maxClusters', 'sizePopulation', 'maxKMSIter', 'maxClusters', ...
-	                'sizePopulation',	'maxGenerations', 'maxGenWOImprov', 'maxEMIter',...
-                  'fitnessFName', 'maxKMSIter', 'minSizePop','regV'};
+nonOptPrms = { 'maxClusters', 'sizePopulation',	'maxGenerations', 'maxGenWOImprov',
+						   'maxEMIter', 'fitnessFName', 'maxKMSIter', 'minSizePop','regV'};
 for f=nonOptPrms
 	if ~isfield(configPrm,cell2mat(f))
 		error('Field %s is missing from configPrm', cell2mat(f))
@@ -54,13 +53,14 @@ genWOImprov = 0;
 lastBestFitness = 0;
 conGraph = generate_constraint_graph(constraints, size(data,1));
 [nChunklets,chunklets] = generate_chunklets(conGraph);
+configPrm.minClusters = nChunklets;
 staticSharedData = struct( 'constraints', constraints, 'conGraph', conGraph,...
 	                         'data', data, 'nChunklets', nChunklets, 'chunklets', chunklets);
 
 [Pfeas Pinfeas] = initialize_with_constraints(staticSharedData, configPrm);
 
 g = 0;
-while ~converged() 
+while ~converged()
 	g = g + 1;
 	%TODO Trocar para parfor quando for rodar em paralelo
 	newFeasibleSolutions = [];
@@ -154,7 +154,7 @@ function converg = converged
 		converg = 0;
 	end
 
-	if g >= configPrm.maxGenerations 
+	if g >= configPrm.maxGenerations
 		converg = 1;
 	end
 end
