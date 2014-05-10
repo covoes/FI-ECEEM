@@ -30,9 +30,10 @@ function [Pfeas Pinfeas] = initialize_with_constraints(sharedData, configPrm)
 
 	nTry = 0;
 	nClasses = max(chunklets);
+	nClusters = generate_nclusters(sizePopInfeasible,configPrm);
 	while length(Pinfeas) < sizePopInfeasible && configPrm.maxInitTries > nTry
 		nTry = nTry + 1;
-		k = nClusters(mod(nTry,sizePopFeasible)+1);
+		k = nClusters(mod(nTry,sizePopInfeasible)+1);
 		initMatrix = data(randsample(size(data,1),k),:);
 		classOfCluster = randsample(nClasses, nClasses);
 		if k > nClasses
