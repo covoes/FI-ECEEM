@@ -25,7 +25,6 @@ function unittests
 end
 
 
-%%TODO Terminar aqui
 function test_roulette
 	probs = [  0.1 0.3 0.6 ];
 	assertElementsAlmostEqual(probs, roda_roleta(probs), 'absolute', 0.01)
