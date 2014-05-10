@@ -20,7 +20,7 @@ elseif maxClustersToCreate == 1
 else
 	%maximum number of clusters reached
 	%chosen are the clusters selected for removal
-	chosen = randi(nClusters, [1 nClusters-configPrm.minClusters]);
+	chosen = unique(randi(nClusters, [1 nClusters-configPrm.minClusters]));
 	indiv = remove_clusters(chosen, indiv);
 	return
 end
