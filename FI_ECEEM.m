@@ -38,8 +38,9 @@ tIni = tic;
 %tolerance to consider no improvement in EM
 tolerance = 1e-5;
 
-nonOptPrms = { 'maxClusters', 'sizePopulation',	'maxGenerations', 'maxGenWOImprov',
-						   'maxEMIter', 'fitnessFName', 'maxKMSIter', 'minSizePop','regV'};
+nonOptPrms = { 'maxClusters', 'sizePopulation',	'maxGenerations', 'maxGenWOImprov',...
+						   'maxEMIter', 'fitnessFName', 'maxKMSIter', 'minSizePop','regV',...
+	             'maxInitTries'};
 for f=nonOptPrms
 	if ~isfield(configPrm,cell2mat(f))
 		error('Field %s is missing from configPrm', cell2mat(f))
@@ -62,10 +63,9 @@ staticSharedData = struct( 'constraints', constraints, 'conGraph', conGraph,...
 g = 0;
 while ~converged()
 	g = g + 1;
-	%TODO Trocar para parfor quando for rodar em paralelo
 	newFeasibleSolutions = [];
 	newInfeasibleSolutions = [];
-	for i=1:length(Pfeas)
+	parfor i=1:length(Pfeas)
 		indiv = Pfeas(i);
 		if indiv.nClusters > 2
 			indiv = clean_solution(indiv,staticSharedData, configPrm);
@@ -86,7 +86,7 @@ while ~converged()
 		fprintf('%d - After FeasProc - %d feasPool %d infeasPool\n',g,length(newFeasibleSolutions),...
 	          	length(newInfeasibleSolutions));
 	end
-	for i=1:length(Pinfeas)
+	parfor i=1:length(Pinfeas)
 		indiv = Pinfeas(i);
 		[indiv, gmmObj] = refinement(indiv, staticSharedData, configPrm, 1);
 		[new_indiv,gmmObj] = infeasible_mutation(indiv, gmmObj, staticSharedData, configPrm);
