@@ -6,7 +6,7 @@ if ischar(probs) && strcmp(probs,'debug')
 	unittests();
 	return
 end
-
+assert (abs(sum(probs)-1)<1e-4)
 chosen = zeros(numToChoose,1);	
 
 for i = 1:numToChoose

@@ -6,8 +6,9 @@ if ischar(probs) && strcmp(probs,'debug')
 	return
 end
 
+assert(numToChoose <= sum(probs>0))
 
-chosen = zeros(numToChoose,1);	
+chosen = zeros(numToChoose,1);
 
 for i = 1:numToChoose
 	selected = roulette( probs, 1 );
@@ -20,19 +21,29 @@ end
 
 function unittests
 	test_roulette;
+	test_rouletteWithZero;
 end
 
 
 %%TODO Terminar aqui
 function test_roulette
 	probs = [  0.1 0.3 0.6 ];
-	freq = zeros([1 3]);
+	assertElementsAlmostEqual(probs, roda_roleta(probs), 'absolute', 0.01)
+end
+
+function test_rouletteWithZero
+	probs = [ 0.1 0.4 0 0.02 0 0.01 0 0.18 0 0 0.09 0.2 ];
+	assertElementsAlmostEqual(probs, roda_roleta(probs), 'absolute', 0.01)
+end
+
+function [freq] = roda_roleta(probs)
+	freq = zeros([1 length(probs)]);
 	nRpt = 10000;
 	for r=1:nRpt
-		counts = roulette_without_reposition(probs, 3);
-		for c=1:3
-			freq(c) = sum(counts==c)/nRpt;
+		counts = roulette_without_reposition(probs, sum(probs>0));
+		for c=1:length(probs)
+			freq(c) = freq(c) + (counts(1)==c);
 		end
 	end
-	assertElementsAlmostEqual(probs, freq, 'absolute', 0.01)
+	freq = freq/nRpt;
 end
