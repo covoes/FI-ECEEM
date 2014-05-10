@@ -12,6 +12,7 @@ penalties = penaltiesByObj(:);
 penalties = penalties./sum(penalties);
 maxClusters = configPrm.maxClusters;
 maxClustersToCreate = maxClusters - nClusters;
+nObjVio = sum(penalties>0);
 if maxClustersToCreate > 1
 	objsToFix = randi(maxClustersToCreate,1) ;
 elseif maxClustersToCreate == 1
@@ -23,10 +24,12 @@ else
 	indiv = remove_clusters(chosen, indiv);
 	return
 end
-chosen = roulette_without_reposition(penalties,objsToFix);
+
+nClusterToCreate = min(nObjVio,objsToFix);
+chosen = roulette_without_reposition(penalties,nClusterToCreate);
 
 clusterLabels = gmmObj.clusterLabels;
-for c=1:objsToFix
+for c=1:nClusterToCreate
 	indiv = create_cluster(indiv, chosen(c), data, chunklets, clusterLabels) ;
 end
 
