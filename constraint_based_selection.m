@@ -3,10 +3,14 @@ function [infeasiblePool] = constraint_based_selection(P, Pmut,sizePop)
 %
 %Assumes that the intent is to minimize the fitness function
 	fullPop = [ P(:); Pmut(:) ];
-	%perform mu-lambda selection
-	fitness = [fullPop(:).totPenalty];
-	fitness = max(fitness) - fitness;
-	probs = fitness ./ sum(fitness);
-	survivors = roulette_without_reposition( probs, min(length(probs),sizePop) );
-	infeasiblePool = fullPop(survivors);
+	if isempty(fullPop)
+		infeasiblePool = [];
+	else
+		%perform mu-lambda selection
+		fitness = [fullPop(:).totPenalty];
+		fitness = max(fitness) - fitness + 1;
+		probs = fitness ./ sum(fitness);
+		survivors = roulette_without_reposition( probs, min(length(probs),sizePop) );
+		infeasiblePool = fullPop(survivors);
+	end
 end
