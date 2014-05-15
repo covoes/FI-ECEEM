@@ -14,6 +14,7 @@ function [isInfeasible,totPenalty,penaltyByObj] = ...
 		penalty = 0;
 		if classK ~= chunklets(l)
 			validClusters = individual.classOfCluster == chunklets(l);
+			assert(~isempty(validClusters))
 			penalty = 1-max(post(l, validClusters));
 		end
 		penaltyByObj(l) = penalty;
