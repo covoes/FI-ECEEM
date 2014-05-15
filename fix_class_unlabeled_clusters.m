@@ -13,8 +13,10 @@ function indiv = fix_class_unlabeled_clusters(indiv, gmmObj, sharedData)
 		objsInClusters = gmmObj.clusterLabels == k;
 		if ~any(sharedData.chunklets(objsInClusters)) && ...
 				nClustersPerClass(indiv.classOfCluster(k)) > 1
+			nClustersPerClass(indiv.classOfCluster(k)) = nClustersPerClass(indiv.classOfCluster(k))-1;
 			indiv.classOfCluster(k) = closestClass(indiv.mean(k,:), ...
 				                     sharedData.data(labeled,:), sharedData.chunklets(labeled));
+			nClustersPerClass(indiv.classOfCluster(k)) = nClustersPerClass(indiv.classOfCluster(k))+1;
 		end
 	end
 	assert(isequal(sort(unique(indiv.classOfCluster(:))), ...
@@ -33,6 +35,7 @@ end
 function unittests
 	test_fixClass;
 	test_doNotRemoveSingleton;
+	test_doNotRemoveMoreThanOne;
 end
 
 function test_fixClass
@@ -56,4 +59,14 @@ function test_doNotRemoveSingleton
 		                 'data', [1 1; 2 2; 6 6; 6 7; 7 6; 7 7; 6.5 7; 10 10; 11 10; 10 11]);
 	new = fix_class_unlabeled_clusters(indiv, gmmObj, sharedData);
 	assertEqual(new.classOfCluster, [1 2 3 1 1]);
+end
+
+function test_doNotRemoveMoreThanOne
+	indiv = struct('nClusters',5, 'classOfCluster', [ 1 1 3 2 2], ...
+		              'mean', [1 1; 6.9 6.9; 10.1 10.1; 2 2; 6 6 ]);
+	gmmObj = struct('clusterLabels', [ 1 4 5 2 2 2 3 3 3 ]);
+	sharedData = struct('chunklets', [ 1 0 0 1 1 1 2 3 3 ], ...
+		                 'data', [1 1; 2 2; 6 6; 6 7; 7 6; 7 7; 6.5 7; 10 10; 11 10; 10 11]);
+	new = fix_class_unlabeled_clusters(indiv, gmmObj, sharedData);
+	assertEqual(new.classOfCluster, [1 1 3 1 2]);
 end
