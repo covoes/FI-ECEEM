@@ -75,7 +75,10 @@ function update_parameters
 		              'clusterLabels', idx, 'classLabels', indiv.classOfCluster(idx), ...
 		              'isFeasible', ~isInfeasible, 'penalties', penaltyByCon);
 	indiv.totPenalty = totPenalty;
-	indiv.fitness = fitnessFunc( cfgPrm.fitnessFName, nlogl, nObjects, nClusters, nFeatures );
+	indiv.fitness = NaN;
+	if ~isInfeasible
+		indiv.fitness = fitnessFunc( cfgPrm.fitnessFName, nlogl, nObjects, nClusters, nFeatures );
+	end
 end
 
 end

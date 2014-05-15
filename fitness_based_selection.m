@@ -7,6 +7,7 @@ function [feasiblePool] = fitness_based_selection(P, Pmut, sizePop)
 		feasiblePool = [];
 	else
 		fitness = [fullPop(:).fitness];
+		assert(all(~isnan(fitness)));
 		[~, idxSorted] = sort(fitness,'ascend');
 		feasiblePool = fullPop(idxSorted(1:min(length(idxSorted),sizePop)));
 	end
