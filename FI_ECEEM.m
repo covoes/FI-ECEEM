@@ -65,6 +65,7 @@ while ~converged()
 	g = g + 1;
 	newFeasibleSolutions = [];
 	newInfeasibleSolutions = [];
+
 	parfor i=1:length(Pfeas)
 		indiv = Pfeas(i);
 		if indiv.nClusters > 2
@@ -84,8 +85,9 @@ while ~converged()
 
 	if configPrm.DEBUG
 		fprintf('%d - After FeasProc - %d feasPool %d infeasPool\n',g,length(newFeasibleSolutions),...
-	          	length(newInfeasibleSolutions));
+				length(newInfeasibleSolutions));
 	end
+
 	parfor i=1:length(Pinfeas)
 		indiv = Pinfeas(i);
 		[indiv, gmmObj] = refinement(indiv, staticSharedData, configPrm, 1);
@@ -96,8 +98,8 @@ while ~converged()
 	end
 
 	if configPrm.DEBUG
-		fprintf('%d - After InfeasProc - %d feasPool %d infeasPool\n',g,length(newFeasibleSolutions),...
-	          	length(newInfeasibleSolutions));
+		fprintf('%d - After InfeasProc - %d feasPool %d infeasPool\n',g,...
+			length(newFeasibleSolutions),	length(newInfeasibleSolutions));
 	end
 	feasiblePool = fitness_based_selection(Pfeas, newFeasibleSolutions, ...
 		                                   configPrm.sizePopulationFeasible);
