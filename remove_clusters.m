@@ -11,6 +11,7 @@ function 	indiv = remove_clusters(chosen, indiv)
 	if isequal(chosen,[])
 		return
 	end
+	oldIndiv = indiv;
 	survivors = true([1 indiv.nClusters]);
 	survivors(chosen) = false;
 	indiv.nClusters = sum(survivors);
@@ -21,8 +22,8 @@ function 	indiv = remove_clusters(chosen, indiv)
 	%re-normalize
 	indiv.mixCoef = indiv.mixCoef ./ nansum(indiv.mixCoef);
 
+	assert(isequal(sort(unique(indiv.classOfCluster(:))), sort(unique(oldIndiv.classOfCluster(:)))))
 end
-
 
 function [filtered] = filter_singleton_classes_clusters(chosen, classOfCluster)
 	filtered = chosen;
@@ -33,6 +34,9 @@ function [filtered] = filter_singleton_classes_clusters(chosen, classOfCluster)
 		if nClustersOfClass == 1
 			filtered(chosenClustersOfClass) = -1;
 		elseif nClustersOfClass == length(chosenClustersOfClass)
+			if nClustersOfClass == 0
+				error('Class with no clusters')
+			end
 			filtered(chosenClustersOfClass) = -1;
 			filtered(length(filtered)+1) = randsample(chosen(chosenClustersOfClass),1);
 		end
